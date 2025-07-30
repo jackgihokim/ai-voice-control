@@ -1,0 +1,556 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		B72EB47A2E3A627D00318920 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B72EB4632E3A627C00318920 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B72EB46A2E3A627C00318920;
+			remoteInfo = AIVoiceControl;
+		};
+		B72EB4842E3A627D00318920 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B72EB4632E3A627C00318920 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B72EB46A2E3A627C00318920;
+			remoteInfo = AIVoiceControl;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		B72EB46B2E3A627C00318920 /* AIVoiceControl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AIVoiceControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B72EB4792E3A627D00318920 /* AIVoiceControlTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AIVoiceControlTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B72EB4832E3A627D00318920 /* AIVoiceControlUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AIVoiceControlUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		B72EB46D2E3A627C00318920 /* AIVoiceControl */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AIVoiceControl;
+			sourceTree = "<group>";
+		};
+		B72EB47C2E3A627D00318920 /* AIVoiceControlTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AIVoiceControlTests;
+			sourceTree = "<group>";
+		};
+		B72EB4862E3A627D00318920 /* AIVoiceControlUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = AIVoiceControlUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B72EB4682E3A627C00318920 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B72EB4762E3A627D00318920 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B72EB4802E3A627D00318920 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		B72EB4622E3A627C00318920 = {
+			isa = PBXGroup;
+			children = (
+				B72EB46D2E3A627C00318920 /* AIVoiceControl */,
+				B72EB47C2E3A627D00318920 /* AIVoiceControlTests */,
+				B72EB4862E3A627D00318920 /* AIVoiceControlUITests */,
+				B72EB46C2E3A627C00318920 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B72EB46C2E3A627C00318920 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B72EB46B2E3A627C00318920 /* AIVoiceControl.app */,
+				B72EB4792E3A627D00318920 /* AIVoiceControlTests.xctest */,
+				B72EB4832E3A627D00318920 /* AIVoiceControlUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B72EB46A2E3A627C00318920 /* AIVoiceControl */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B72EB48D2E3A627D00318920 /* Build configuration list for PBXNativeTarget "AIVoiceControl" */;
+			buildPhases = (
+				B72EB4672E3A627C00318920 /* Sources */,
+				B72EB4682E3A627C00318920 /* Frameworks */,
+				B72EB4692E3A627C00318920 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B72EB46D2E3A627C00318920 /* AIVoiceControl */,
+			);
+			name = AIVoiceControl;
+			packageProductDependencies = (
+			);
+			productName = AIVoiceControl;
+			productReference = B72EB46B2E3A627C00318920 /* AIVoiceControl.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B72EB4782E3A627D00318920 /* AIVoiceControlTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B72EB4902E3A627D00318920 /* Build configuration list for PBXNativeTarget "AIVoiceControlTests" */;
+			buildPhases = (
+				B72EB4752E3A627D00318920 /* Sources */,
+				B72EB4762E3A627D00318920 /* Frameworks */,
+				B72EB4772E3A627D00318920 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B72EB47B2E3A627D00318920 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				B72EB47C2E3A627D00318920 /* AIVoiceControlTests */,
+			);
+			name = AIVoiceControlTests;
+			packageProductDependencies = (
+			);
+			productName = AIVoiceControlTests;
+			productReference = B72EB4792E3A627D00318920 /* AIVoiceControlTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		B72EB4822E3A627D00318920 /* AIVoiceControlUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B72EB4932E3A627D00318920 /* Build configuration list for PBXNativeTarget "AIVoiceControlUITests" */;
+			buildPhases = (
+				B72EB47F2E3A627D00318920 /* Sources */,
+				B72EB4802E3A627D00318920 /* Frameworks */,
+				B72EB4812E3A627D00318920 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B72EB4852E3A627D00318920 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				B72EB4862E3A627D00318920 /* AIVoiceControlUITests */,
+			);
+			name = AIVoiceControlUITests;
+			packageProductDependencies = (
+			);
+			productName = AIVoiceControlUITests;
+			productReference = B72EB4832E3A627D00318920 /* AIVoiceControlUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		B72EB4632E3A627C00318920 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					B72EB46A2E3A627C00318920 = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					B72EB4782E3A627D00318920 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = B72EB46A2E3A627C00318920;
+					};
+					B72EB4822E3A627D00318920 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = B72EB46A2E3A627C00318920;
+					};
+				};
+			};
+			buildConfigurationList = B72EB4662E3A627C00318920 /* Build configuration list for PBXProject "AIVoiceControl" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = B72EB4622E3A627C00318920;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B72EB46C2E3A627C00318920 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B72EB46A2E3A627C00318920 /* AIVoiceControl */,
+				B72EB4782E3A627D00318920 /* AIVoiceControlTests */,
+				B72EB4822E3A627D00318920 /* AIVoiceControlUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B72EB4692E3A627C00318920 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B72EB4772E3A627D00318920 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B72EB4812E3A627D00318920 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B72EB4672E3A627C00318920 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B72EB4752E3A627D00318920 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B72EB47F2E3A627D00318920 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B72EB47B2E3A627D00318920 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B72EB46A2E3A627C00318920 /* AIVoiceControl */;
+			targetProxy = B72EB47A2E3A627D00318920 /* PBXContainerItemProxy */;
+		};
+		B72EB4852E3A627D00318920 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B72EB46A2E3A627C00318920 /* AIVoiceControl */;
+			targetProxy = B72EB4842E3A627D00318920 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		B72EB48B2E3A627D00318920 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 2B87NQYV9P;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		B72EB48C2E3A627D00318920 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 2B87NQYV9P;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		B72EB48E2E3A627D00318920 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = AIVoiceControl/AIVoiceControl.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2B87NQYV9P;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.jack-kim-dev.AIVoiceControl";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		B72EB48F2E3A627D00318920 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = AIVoiceControl/AIVoiceControl.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2B87NQYV9P;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.jack-kim-dev.AIVoiceControl";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		B72EB4912E3A627D00318920 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2B87NQYV9P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.jack-kim-dev.AIVoiceControlTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AIVoiceControl.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AIVoiceControl";
+			};
+			name = Debug;
+		};
+		B72EB4922E3A627D00318920 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2B87NQYV9P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.jack-kim-dev.AIVoiceControlTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AIVoiceControl.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AIVoiceControl";
+			};
+			name = Release;
+		};
+		B72EB4942E3A627D00318920 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2B87NQYV9P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.jack-kim-dev.AIVoiceControlUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = AIVoiceControl;
+			};
+			name = Debug;
+		};
+		B72EB4952E3A627D00318920 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2B87NQYV9P;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.jack-kim-dev.AIVoiceControlUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = AIVoiceControl;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		B72EB4662E3A627C00318920 /* Build configuration list for PBXProject "AIVoiceControl" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B72EB48B2E3A627D00318920 /* Debug */,
+				B72EB48C2E3A627D00318920 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B72EB48D2E3A627D00318920 /* Build configuration list for PBXNativeTarget "AIVoiceControl" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B72EB48E2E3A627D00318920 /* Debug */,
+				B72EB48F2E3A627D00318920 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B72EB4902E3A627D00318920 /* Build configuration list for PBXNativeTarget "AIVoiceControlTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B72EB4912E3A627D00318920 /* Debug */,
+				B72EB4922E3A627D00318920 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B72EB4932E3A627D00318920 /* Build configuration list for PBXNativeTarget "AIVoiceControlUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B72EB4942E3A627D00318920 /* Debug */,
+				B72EB4952E3A627D00318920 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = B72EB4632E3A627C00318920 /* Project object */;
+}
