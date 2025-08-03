@@ -12,8 +12,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
     private var menuBarViewModel: MenuBarViewModel?
+    private var settingsWindowController: SettingsWindowController?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // DEBUG: Reset UserDefaults if needed (comment out in production)
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-reset-defaults") {
+            UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier!)
+            UserDefaults.standard.synchronize()
+            print("🗑️ UserDefaults reset for debugging")
+        }
+        #endif
+        
+        // ULTRA NUCLEAR OPTION: Kill ALL ViewBridge connections
+        SimpleViewBridgeKiller.activateNuclearOption()
+        
+        // Completely disable window restoration system
+        NSApplication.shared.disableRelaunchOnLogin()
+        UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+        
         // Create the status bar item
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         
@@ -33,6 +50,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         popover?.contentSize = NSSize(width: 300, height: 400)
         popover?.behavior = .transient
         popover?.contentViewController = NSHostingController(rootView: MenuBarView(viewModel: menuBarViewModel!))
+        
+        // Disable restoration for popover as well
+        if let popoverWindow = popover?.contentViewController?.view.window {
+            popoverWindow.isRestorable = false
+            popoverWindow.restorationClass = nil
+        }
+        
+        // Setup notification observers
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(showPreferences),
+            name: .openSettings,
+            object: nil
+        )
     }
     
     @objc private func togglePopover() {
@@ -68,6 +99,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         preferencesItem.target = self
         menu.addItem(preferencesItem)
         
+        #if DEBUG
+        menu.addItem(NSMenuItem.separator())
+        
+        let resetItem = NSMenuItem(title: "Reset All Settings (Debug)", action: #selector(resetSettings), keyEquivalent: "")
+        resetItem.target = self
+        menu.addItem(resetItem)
+        #endif
+        
         menu.addItem(NSMenuItem.separator())
         
         let quitItem = NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -89,12 +128,66 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc private func showPreferences() {
-        // For now, just show an alert. Later this will open preferences window
+        if settingsWindowController == nil {
+            settingsWindowController = SettingsWindowController()
+        }
+        settingsWindowController?.showWindow()
+    }
+    
+    #if DEBUG
+    @objc private func resetSettings() {
         let alert = NSAlert()
-        alert.messageText = "Preferences"
-        alert.informativeText = "Preferences window coming soon!"
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
+        alert.messageText = "Reset All Settings?"
+        alert.informativeText = "This will delete all app settings and preferences. The app will quit and you'll need to restart it."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Reset")
+        alert.addButton(withTitle: "Cancel")
+        
+        if alert.runModal() == .alertFirstButtonReturn {
+            // Close settings window if open
+            settingsWindowController?.window?.close()
+            
+            // Delete all UserDefaults
+            UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier!)
+            UserDefaults.standard.synchronize()
+            
+            // Quit the app
+            NSApplication.shared.terminate(nil)
+        }
+    }
+    #endif
+    
+    // MARK: - Window Restoration Prevention
+    
+    func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
+        return false
+    }
+    
+    func application(_ application: NSApplication, willEncodeRestorableState coder: NSCoder) {
+        // Explicitly prevent encoding any restorable state
+    }
+    
+    func application(_ application: NSApplication, didDecodeRestorableState coder: NSCoder) {
+        // Explicitly prevent decoding any restorable state
+    }
+    
+    func application(_ sender: NSApplication, delegateHandlesKey key: String) -> Bool {
+        // Prevent handling of restoration-related keys
+        if key.contains("NSWindow") || key.contains("restoration") {
+            return false
+        }
+        return false
+    }
+    
+    // Override window restoration methods
+    func application(_ application: NSApplication, restoreWindowWithIdentifier identifier: NSUserInterfaceItemIdentifier, state: NSCoder, completionHandler: @escaping (NSWindow?, Error?) -> Void) {
+        // Always return nil to prevent any window restoration
+        completionHandler(nil, nil)
+    }
+    
+    func applicationWillTerminate(_ notification: Notification) {
+        // Clear any restoration data on app termination
+        UserDefaults.standard.removeObject(forKey: "NSQuitAlwaysKeepsWindows")
+        UserDefaults.standard.synchronize()
     }
 }

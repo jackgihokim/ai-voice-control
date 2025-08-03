@@ -48,7 +48,7 @@ Features/MenuBar/
 └── MenuBarViewModel.swift
 ```
 
-#### Step 2: 설정 창 UI 구현
+#### Step 2: 설정 창 UI 구현 ✅
 **목표**: 탭 기반 설정 창 구현
 - SwiftUI로 설정 창 구현
 - 탭 구조 생성 (앱 관리, 음성 설정, 일반 설정, 정보)
@@ -56,11 +56,19 @@ Features/MenuBar/
 - UserDefaults 연동
 - **테스트**: 설정 창이 열리고 탭 전환이 작동하는지 확인
 
+**구현된 추가 기능**:
+- UltraSimpleTextField를 사용한 ViewBridge 에러 방지
+- 앱별 커스텀 음성 설정 (selectedVoiceId, speechRate, voiceOutputVolume)
+- Wake words와 Execution words 배열 지원
+- Debug 모드에서 UserDefaults 리셋 기능
+- 앱 등록 시 설치된 앱 자동 검색
+
 **파일 구조**:
 ```
 Features/Settings/
 ├── SettingsWindow.swift
 ├── SettingsViewModel.swift
+├── SettingsWindowController.swift
 ├── Tabs/
 │   ├── AppManagementTab.swift
 │   ├── VoiceSettingsTab.swift
@@ -69,6 +77,8 @@ Features/Settings/
 Core/Models/
 ├── AppConfiguration.swift
 └── UserSettings.swift
+Core/Utilities/
+└── UltraSimpleTextField.swift  # ViewBridge 에러 방지 텍스트 필드
 ```
 
 #### Step 3: 권한 요청 시스템 구현
@@ -173,17 +183,17 @@ Features/AppControl/
 └── KeyboardSimulator.swift
 ```
 
-#### Step 9: End 워드 시스템 구현
-**목표**: End 워드 감지 및 자동 전송
-- End 워드 감지 로직
+#### Step 9: Execution 워드 시스템 구현
+**목표**: Execution 워드 감지 및 자동 전송
+- Execution 워드 감지 로직
 - 음성 입력 버퍼 관리
-- End 워드 감지 시 Enter 키 전송
-- **테스트**: End 워드를 말하면 입력이 전송되는지 확인
+- Execution 워드 감지 시 Enter 키 전송
+- **테스트**: Execution 워드를 말하면 입력이 전송되는지 확인
 
 **파일 구조**:
 ```
 Features/VoiceRecognition/
-├── EndWordDetector.swift
+├── ExecutionWordDetector.swift
 └── InputBuffer.swift
 ```
 
@@ -286,19 +296,29 @@ Features/Feedback/
 
 ### Phase 7: 통합 및 최적화 (1주)
 
-#### Step 16: 앱 관리 기능 완성
+#### Step 16: 앱 관리 기능 완성 ✅
 **목표**: 앱 등록/삭제/설정 기능 구현
 - 앱 검색 및 선택 UI
-- 웨이크 워드/End 워드 설정
+- 웨이크 워드/Execution 워드 설정
 - 앱별 설정 저장
 - **테스트**: 여러 앱을 등록하고 설정이 유지되는지 확인
 
+**구현된 기능**:
+- 설치된 앱 자동 검색 (Applications 폴더 스캔)
+- Wake words 배열 지원 (다중 웨이크 워드)
+- Execution words 배열 지원 (기본값: Execute, Run, Go)
+- 앱별 커스텀 음성 설정 (편집 모드에서만 가능)
+- 앱 활성화/비활성화 토글
+- 앱 아이콘 자동 로드
+- 에러 처리 및 로깅
+
 **파일 구조**:
 ```
-Features/AppManagement/
-├── AppRegistrationView.swift
-├── AppSearcher.swift
-└── AppSettingsManager.swift
+Features/Settings/Tabs/
+└── AppManagementTab.swift  # 앱 관리 기능 통합 구현
+    ├── AddAppSheet         # 새 앱 추가 UI
+    ├── EditAppSheet        # 앱 설정 편집 UI
+    └── AppRow             # 앱 목록 표시 컴포넌트
 ```
 
 #### Step 17: 성능 최적화
@@ -352,6 +372,25 @@ Features/AppManagement/
 - 최신 SwiftUI 기능 활용
 - Voice Isolation API
 - 향상된 Accessibility API
+
+### ViewBridge 에러 해결
+- **모든 텍스트 입력에 UltraSimpleTextField 사용 필수**
+- AppDelegate에서 SimpleViewBridgeKiller.activateNuclearOption() 호출
+- 표준 SwiftUI TextField 사용 금지
+- 상세 내용은 VIEWBRIDGE_NUCLEAR_SOLUTION.md 참조
+
+### 디버깅 도구
+- **UserDefaults 리셋**: 
+  - 터미널: `./reset-app.sh`
+  - Xcode: `-reset-defaults` 인자 추가
+  - 디버그 메뉴: "Reset All Settings (Debug)"
+- **에러 로깅**: 콘솔에서 앱 로딩 에러 확인
+
+### 음성 설정 아키텍처
+- **글로벌 설정**: 모든 앱의 기본값
+- **앱별 설정**: nil일 때 글로벌 설정 사용
+- **편집 흐름**: 앱 추가 → 편집 모드에서 음성 설정
+- **AVSpeechSynthesizer**: @State로 유지하여 조기 해제 방지
 
 ### 써드파티 라이브러리
 - 가능한 한 시스템 프레임워크만 사용

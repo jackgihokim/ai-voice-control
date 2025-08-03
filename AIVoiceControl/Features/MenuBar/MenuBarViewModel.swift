@@ -40,6 +40,11 @@ class MenuBarViewModel: ObservableObject {
         statusMessage = "Ready"
     }
     
+    func openSettings() {
+        // Post notification to AppDelegate to open settings
+        NotificationCenter.default.post(name: .openSettings, object: nil)
+    }
+    
     // MARK: - Private Methods
     private func setupBindings() {
         // Setup any necessary bindings or observers

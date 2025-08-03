@@ -129,7 +129,7 @@ struct MenuBarView: View {
                 
                 Spacer()
                 
-                Button(action: { /* TODO: Open settings */ }) {
+                Button(action: viewModel.openSettings) {
                     Label("Settings", systemImage: "gear")
                         .font(.caption)
                 }

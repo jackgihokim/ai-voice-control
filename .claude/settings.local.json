@@ -5,7 +5,8 @@
       "Bash(mkdir:*)",
       "Bash(rm:*)",
       "Bash(swift build:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(xcodebuild:*)"
     ],
     "deny": []
   }
