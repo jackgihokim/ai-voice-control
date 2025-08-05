@@ -24,12 +24,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         #endif
         
-        // ULTRA NUCLEAR OPTION: Kill ALL ViewBridge connections
+        // SAFE: Minimize ViewBridge connections
         SimpleViewBridgeKiller.activateNuclearOption()
         
-        // Completely disable window restoration system
-        NSApplication.shared.disableRelaunchOnLogin()
+        // Disable window restoration system
         UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
+        
+        // Initialize permission manager and check permissions
+        Task { @MainActor in
+            PermissionManager.shared.updateAllPermissionStatuses()
+        }
         
         // Create the status bar item
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)

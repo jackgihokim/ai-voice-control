@@ -2,6 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <!-- Temporarily disabled to allow permission requests
     <key>LSUIElement</key>
     <true/>
     <key>CFBundleDevelopmentRegion</key>
@@ -26,5 +27,15 @@
     <false/>
     <key>NSSupportsSuddenTermination</key>
     <false/>
+    
+    <!-- Permission Usage Descriptions -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>AI Voice Control needs microphone access to recognize voice commands and enable hands-free interaction with your applications.</string>
+    
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>AI Voice Control uses speech recognition to convert your voice commands into text for application control.</string>
+    
+    <key>NSAppleEventsUsageDescription</key>
+    <string>AI Voice Control needs automation permission to control terminal applications and execute voice commands.</string>
 </dict>
 </plist>

@@ -194,31 +194,17 @@ class NuclearTextField: NSTextField {
 /// NUCLEAR SYSTEM-LEVEL KILLER: Disable input services application-wide
 class SimpleViewBridgeKiller {
     
-    /// NUCLEAR: Call this once at app startup to kill ViewBridge services system-wide
+    /// SAFE: Call this once at app startup to minimize ViewBridge services
     static func activateNuclearOption() {
+        // SAFE APPROACH: Only disable problematic text input features
         let defaults = UserDefaults.standard
         
-        // NUCLEAR: Disable automatic text correction system-wide (text input only)
+        // Disable only the most problematic automatic text features
         defaults.set(false, forKey: "NSAutomaticSpellingCorrectionEnabled")
-        defaults.set(false, forKey: "NSAutomaticQuoteSubstitutionEnabled")
-        defaults.set(false, forKey: "NSAutomaticDashSubstitutionEnabled")
         defaults.set(false, forKey: "NSAutomaticTextReplacementEnabled")
         defaults.set(false, forKey: "NSAutomaticTextCompletionEnabled")
-        defaults.set(false, forKey: "NSAutomaticDataDetectionEnabled")
-        defaults.set(false, forKey: "NSAutomaticLinkDetectionEnabled")
-        defaults.set(false, forKey: "WebAutomaticSpellingCorrectionEnabled")
-        defaults.set(false, forKey: "WebAutomaticQuoteSubstitutionEnabled")
-        defaults.set(false, forKey: "WebAutomaticDashSubstitutionEnabled")
-        defaults.set(false, forKey: "WebAutomaticTextReplacementEnabled")
-        defaults.set(false, forKey: "WebContinuousSpellCheckingEnabled")
         
-        // REMOVED: These were interfering with speech synthesis services
-        // defaults.set(false, forKey: "NSTextInputContextKeyboardLayoutName")
-        // defaults.set(false, forKey: "AppleLanguagePreferences")
-        
-        // NUCLEAR: Force synchronization
+        // Synchronize without excessive logging
         defaults.synchronize()
-        
-        // Silently activate nuclear option to prevent ViewBridge errors
     }
 }

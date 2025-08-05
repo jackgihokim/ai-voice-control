@@ -15,23 +15,43 @@ class MenuBarViewModel: ObservableObject {
     @Published var transcribedText: String = ""
     @Published var statusMessage: String = "Ready"
     @Published var isProcessing: Bool = false
+    @Published var hasRequiredPermissions: Bool = false
     
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
+    private let permissionManager = PermissionManager.shared
     
     // MARK: - Initialization
     init() {
         setupBindings()
+        checkPermissions()
     }
     
     // MARK: - Public Methods
     func toggleListening() {
+        // Check permissions before starting
+        if !hasRequiredPermissions {
+            statusMessage = "Permissions required"
+            return
+        }
+        
         isListening.toggle()
         
         if isListening {
             startListening()
         } else {
             stopListening()
+        }
+    }
+    
+    func checkPermissions() {
+        permissionManager.updateAllPermissionStatuses()
+        hasRequiredPermissions = permissionManager.areAllCriticalPermissionsGranted()
+        
+        if !hasRequiredPermissions {
+            statusMessage = "Setup required - Check permissions"
+        } else {
+            statusMessage = "Ready"
         }
     }
     
@@ -53,6 +73,9 @@ class MenuBarViewModel: ObservableObject {
                 self?.updateStatusMessage(listening: listening)
             }
             .store(in: &cancellables)
+        
+        // Monitor permission changes (removed to prevent infinite loops)
+        // Will be manually updated when needed
     }
     
     private func startListening() {

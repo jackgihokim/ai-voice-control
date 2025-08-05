@@ -2,20 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Disable app sandbox to allow Accessibility API access -->
-	<key>com.apple.security.app-sandbox</key>
-	<false/>
-	
-	<!-- Allow microphone access for voice recognition -->
-	<key>com.apple.security.device.microphone</key>
-	<true/>
-	
-	<!-- Allow automation for AppleScript control -->
-	<key>com.apple.security.automation.apple-events</key>
-	<true/>
-	
-	<!-- Allow accessibility features -->
-	<key>com.apple.security.accessibility</key>
-	<true/>
+    <key>com.apple.security.app-sandbox</key>
+    <false/>
+    <key>com.apple.security.device.microphone</key>
+    <true/>
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
 </dict>
 </plist>

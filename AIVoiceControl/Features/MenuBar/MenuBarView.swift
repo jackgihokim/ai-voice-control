@@ -9,6 +9,7 @@ import SwiftUI
 
 struct MenuBarView: View {
     @ObservedObject var viewModel: MenuBarViewModel
+    @State private var showingPermissionOnboarding = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -22,6 +23,11 @@ struct MenuBarView: View {
             // Main Content
             ScrollView {
                 VStack(spacing: 16) {
+                    // Permission Status (if not granted)
+                    if !viewModel.hasRequiredPermissions {
+                        permissionStatusSection
+                    }
+                    
                     // Status Section
                     statusSection
                     
@@ -45,6 +51,36 @@ struct MenuBarView: View {
                 .background(Color(NSColor.controlBackgroundColor))
         }
         .frame(width: 300, height: 400)
+        .sheet(isPresented: $showingPermissionOnboarding) {
+            PermissionOnboardingView()
+        }
+    }
+    
+    // MARK: - Permission Status Section
+    private var permissionStatusSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                Text("Setup Required")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.orange)
+                Spacer()
+            }
+            
+            Text("Some permissions are missing for voice control to work properly.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            Button("Complete Setup") {
+                showingPermissionOnboarding = true
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(12)
+        .background(Color.orange.opacity(0.1))
+        .cornerRadius(8)
     }
     
     // MARK: - Header View
@@ -116,7 +152,7 @@ struct MenuBarView: View {
                 .cornerRadius(8)
             }
             .buttonStyle(.plain)
-            .disabled(viewModel.isProcessing && !viewModel.isListening)
+            .disabled(viewModel.isProcessing && !viewModel.isListening || !viewModel.hasRequiredPermissions)
             
             // Secondary actions
             HStack(spacing: 8) {

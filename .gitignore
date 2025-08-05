@@ -86,3 +86,14 @@ fastlane/test_output
 iOSInjectionProject/
 
 .idea/
+
+# Debug and test scripts (temporary files)
+debug-*.swift
+test-*.swift
+
+# Claude settings (contains local permissions)
+.claude/
+
+# Code coverage profiling data
+*.profraw
+*.profdata
