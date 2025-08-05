@@ -299,6 +299,18 @@ class PermissionManager: ObservableObject {
         return automationPermissionStatus
     }
     
+    // MARK: - Permission Check Methods
+    
+    func checkMicrophonePermission() async -> PermissionStatus {
+        updateMicrophonePermissionStatus()
+        return microphonePermissionStatus
+    }
+    
+    func checkSpeechRecognitionPermission() async -> PermissionStatus {
+        updateSpeechRecognitionPermissionStatus()
+        return speechRecognitionPermissionStatus
+    }
+    
     // MARK: - Helper Methods
     
     func areAllCriticalPermissionsGranted() -> Bool {

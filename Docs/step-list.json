@@ -15,7 +15,7 @@
         "subject": "권한 요청 시스템 구현"
     },
     {
-        "is_done": false,
+        "is_done": true,
         "step": 4,
         "subject": "기본 음성 인식 구현"
     },

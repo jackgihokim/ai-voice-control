@@ -32,7 +32,8 @@
       "Bash(sudo sqlite3:*)",
       "Bash(./debug-current-state.swift)",
       "Bash(/Users/jackkim/VibeProjects/AIVoiceControl/DerivedData/AIVoiceControl/Build/Products/Debug/AIVoiceControl.app/Contents/MacOS/AIVoiceControl)",
-      "Bash(spctl:*)"
+      "Bash(spctl:*)",
+      "Bash(./Shells/dev-build-and-test.sh:*)"
     ],
     "deny": []
   }

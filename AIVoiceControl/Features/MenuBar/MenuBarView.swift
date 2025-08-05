@@ -135,6 +135,20 @@ struct MenuBarView: View {
     // MARK: - Control Section
     private var controlSection: some View {
         VStack(spacing: 12) {
+            // Language selector
+            HStack {
+                Text("Language:")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Picker("", selection: $viewModel.currentLanguage) {
+                    Text("한국어").tag(VoiceLanguage.korean)
+                    Text("English").tag(VoiceLanguage.english)
+                }
+                .pickerStyle(.segmented)
+                .disabled(viewModel.isListening)
+            }
+            
             // Main control button
             Button(action: viewModel.toggleListening) {
                 HStack {
@@ -153,6 +167,11 @@ struct MenuBarView: View {
             }
             .buttonStyle(.plain)
             .disabled(viewModel.isProcessing && !viewModel.isListening || !viewModel.hasRequiredPermissions)
+            
+            // Audio level indicator
+            if viewModel.isListening {
+                audioLevelIndicator
+            }
             
             // Secondary actions
             HStack(spacing: 8) {
@@ -222,6 +241,42 @@ struct MenuBarView: View {
             return .orange
         } else {
             return .green
+        }
+    }
+    
+    // MARK: - Audio Level Indicator
+    private var audioLevelIndicator: some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 2) {
+                ForEach(0..<20) { index in
+                    Rectangle()
+                        .fill(audioLevelColor(for: index))
+                        .frame(width: 8, height: 20)
+                        .scaleEffect(y: audioLevelScale(for: index), anchor: .bottom)
+                        .animation(.easeInOut(duration: 0.1), value: viewModel.audioLevel)
+                }
+            }
+            
+            Text("Audio Level")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 8)
+    }
+    
+    private func audioLevelScale(for index: Int) -> CGFloat {
+        let normalizedIndex = CGFloat(index) / 20.0
+        return CGFloat(viewModel.audioLevel) > normalizedIndex ? 1.0 : 0.3
+    }
+    
+    private func audioLevelColor(for index: Int) -> Color {
+        let normalizedIndex = CGFloat(index) / 20.0
+        if normalizedIndex < 0.6 {
+            return .green
+        } else if normalizedIndex < 0.8 {
+            return .yellow
+        } else {
+            return .red
         }
     }
     
