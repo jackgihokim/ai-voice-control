@@ -375,9 +375,9 @@ struct AddAppSheet: View {
                         
                         // Wake word list - horizontal layout
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                            ForEach(wakeWords.indices, id: \.self) { index in
+                            ForEach(wakeWords, id: \.self) { word in
                                 ZStack(alignment: .topTrailing) {
-                                    Text(wakeWords[index])
+                                    Text(word)
                                         .font(.caption)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
@@ -385,7 +385,10 @@ struct AddAppSheet: View {
                                         .cornerRadius(4)
                                     
                                     Button(action: {
-                                        wakeWords.remove(at: index)
+                                        if let index = wakeWords.firstIndex(of: word) {
+                                            // Force SwiftUI update by creating a new array
+                                            wakeWords = wakeWords.enumerated().compactMap { $0.offset == index ? nil : $0.element }
+                                        }
                                     }) {
                                         Image(systemName: "xmark.circle.fill")
                                             .font(.caption2)
@@ -449,7 +452,8 @@ struct AddAppSheet: View {
     
     private func addWakeWord() {
         if !newWakeWord.isEmpty && !wakeWords.contains(newWakeWord) {
-            wakeWords.append(newWakeWord)
+            // Force SwiftUI update by creating a new array
+            wakeWords = wakeWords + [newWakeWord]
             newWakeWord = ""
         }
     }
@@ -532,6 +536,7 @@ struct EditAppSheet: View {
     @State private var availableVoices: [AVSpeechSynthesisVoice] = []
     @State private var isTestingVoice = false
     @State private var speechSynthesizer: AVSpeechSynthesizer?
+    @State private var viewRefreshID = UUID() // Force view refresh
     
     init(app: AppConfiguration, onSave: @escaping (AppConfiguration) -> Void, onCancel: @escaping () -> Void) {
         self.app = app
@@ -552,9 +557,9 @@ struct EditAppSheet: View {
                     VStack(alignment: .leading, spacing: 12) {
                         // Wake word list - horizontal layout
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                            ForEach(editedApp.wakeWords.indices, id: \.self) { index in
+                            ForEach(editedApp.wakeWords, id: \.self) { word in
                                 ZStack(alignment: .topTrailing) {
-                                    Text(editedApp.wakeWords[index])
+                                    Text(word)
                                         .font(.caption)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
@@ -562,7 +567,20 @@ struct EditAppSheet: View {
                                         .cornerRadius(4)
                                     
                                     Button(action: {
-                                        editedApp.wakeWords.remove(at: index)
+                                        if let index = editedApp.wakeWords.firstIndex(of: word) {
+                                            // Use delayed update to avoid ViewBridge conflicts
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                                // Create completely new array without the word
+                                                var newWakeWords = self.editedApp.wakeWords
+                                                newWakeWords.remove(at: index)
+                                                self.editedApp.wakeWords = newWakeWords
+                                                
+                                                // Force complete view refresh after array update
+                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                                    self.viewRefreshID = UUID()
+                                                }
+                                            }
+                                        }
                                     }) {
                                         Image(systemName: "xmark.circle.fill")
                                             .font(.caption2)
@@ -595,9 +613,9 @@ struct EditAppSheet: View {
                         
                         // Execution word list - horizontal layout
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                            ForEach(editedApp.executionWords.indices, id: \.self) { index in
+                            ForEach(editedApp.executionWords, id: \.self) { word in
                                 ZStack(alignment: .topTrailing) {
-                                    Text(editedApp.executionWords[index])
+                                    Text(word)
                                         .font(.caption)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
@@ -605,7 +623,20 @@ struct EditAppSheet: View {
                                         .cornerRadius(4)
                                     
                                     Button(action: {
-                                        editedApp.executionWords.remove(at: index)
+                                        if let index = editedApp.executionWords.firstIndex(of: word) {
+                                            // Use delayed update to avoid ViewBridge conflicts
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                                // Create completely new array without the word
+                                                var newExecutionWords = self.editedApp.executionWords
+                                                newExecutionWords.remove(at: index)
+                                                self.editedApp.executionWords = newExecutionWords
+                                                
+                                                // Force complete view refresh after array update
+                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                                    self.viewRefreshID = UUID()
+                                                }
+                                            }
+                                        }
                                     }) {
                                         Image(systemName: "xmark.circle.fill")
                                             .font(.caption2)
@@ -762,6 +793,7 @@ struct EditAppSheet: View {
         }
         .padding()
         .frame(width: 500, height: 700)
+        .id(viewRefreshID) // Force view refresh when ID changes
         .onDisappear {
             // Clean up speech synthesizer when view disappears
             speechSynthesizer?.stopSpeaking(at: .immediate)
@@ -771,15 +803,41 @@ struct EditAppSheet: View {
     
     private func addWakeWordToEditedApp() {
         if !newWakeWord.isEmpty && !editedApp.wakeWords.contains(newWakeWord) {
-            editedApp.wakeWords.append(newWakeWord)
-            newWakeWord = ""
+            let wordToAdd = newWakeWord
+            newWakeWord = "" // Clear immediately to prevent re-entry
+            
+            // Use delayed update to avoid ViewBridge conflicts
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // Create completely new array to force SwiftUI update
+                var newWakeWords = self.editedApp.wakeWords
+                newWakeWords.append(wordToAdd)
+                self.editedApp.wakeWords = newWakeWords
+                
+                // Force complete view refresh after array update
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    self.viewRefreshID = UUID()
+                }
+            }
         }
     }
     
     private func addExecutionWordToEditedApp() {
         if !newExecutionWord.isEmpty && !editedApp.executionWords.contains(newExecutionWord) {
-            editedApp.executionWords.append(newExecutionWord)
-            newExecutionWord = ""
+            let wordToAdd = newExecutionWord
+            newExecutionWord = "" // Clear immediately to prevent re-entry
+            
+            // Use delayed update to avoid ViewBridge conflicts
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // Create completely new array to force SwiftUI update
+                var newExecutionWords = self.editedApp.executionWords
+                newExecutionWords.append(wordToAdd)
+                self.editedApp.executionWords = newExecutionWords
+                
+                // Force complete view refresh after array update
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    self.viewRefreshID = UUID()
+                }
+            }
         }
     }
     
@@ -854,9 +912,9 @@ struct DefaultExecutionWordsView: View {
         VStack(alignment: .leading, spacing: 8) {
             // Execution word list - horizontal layout
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                ForEach(executionWords.indices, id: \.self) { index in
+                ForEach(executionWords, id: \.self) { word in
                     ZStack(alignment: .topTrailing) {
-                        Text(executionWords[index])
+                        Text(word)
                             .font(.caption)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -864,7 +922,10 @@ struct DefaultExecutionWordsView: View {
                             .cornerRadius(4)
                         
                         Button(action: {
-                            executionWords.remove(at: index)
+                            if let index = executionWords.firstIndex(of: word) {
+                                // Force SwiftUI update by creating a new array
+                                executionWords = executionWords.enumerated().compactMap { $0.offset == index ? nil : $0.element }
+                            }
                         }) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.caption2)
@@ -894,7 +955,8 @@ struct DefaultExecutionWordsView: View {
     
     private func addExecutionWord() {
         if !newExecutionWord.isEmpty && !executionWords.contains(newExecutionWord) {
-            executionWords.append(newExecutionWord)
+            // Force SwiftUI update by creating a new array
+            executionWords = executionWords + [newExecutionWord]
             newExecutionWord = ""
         }
     }

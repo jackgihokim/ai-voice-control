@@ -17,6 +17,8 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
     @Published var recognitionState: RecognitionState = .idle
     @Published var isVoiceIsolationEnabled = false
     @Published var audioQuality: VoiceIsolationManager.AudioQuality = .unknown
+    @Published var isWaitingForCommand: Bool = false
+    @Published var detectedApp: AppConfiguration?
     
     // MARK: - Private Properties
     private var speechRecognizer: SFSpeechRecognizer?
@@ -25,6 +27,12 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
     private let audioEngine = AVAudioEngine()
     private var audioLevelTimer: Timer?
     private lazy var voiceIsolationManager = VoiceIsolationManager()
+    private let wakeWordDetector = WakeWordDetector()
+    
+    // Continuous recognition management
+    private var restartTimer: Timer?
+    private let maxContinuousTime: TimeInterval = 58.0 // Stay under 60s Apple limit
+    private var isRestarting = false
     
     // MARK: - Configuration
     private let locale: Locale
@@ -60,17 +68,20 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
     }
     
     // MARK: - Initialization
-    init(locale: Locale = Locale(identifier: "ko-KR"), requiresOnDeviceRecognition: Bool = false) {
+    init(locale: Locale = Locale(identifier: "ko-KR"), requiresOnDeviceRecognition: Bool = true) {
         self.locale = locale
-        self.requiresOnDeviceRecognition = requiresOnDeviceRecognition
+        self.requiresOnDeviceRecognition = requiresOnDeviceRecognition // Enable on-device to bypass 1-minute limit
         super.init()
         setupSpeechRecognizer()
         setupVoiceIsolationBinding()
+        setupWakeWordDetector()
     }
     
     deinit {
         Task { @MainActor in
             stopListening()
+            restartTimer?.invalidate()
+            restartTimer = nil
         }
     }
     
@@ -108,7 +119,26 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         }
     }
     
+    private func setupWakeWordDetector() {
+        // Bind wake word detector state to our published properties
+        Task {
+            for await _ in wakeWordDetector.$isWaitingForCommand.values {
+                isWaitingForCommand = wakeWordDetector.isWaitingForCommand
+            }
+        }
+        
+        Task {
+            for await _ in wakeWordDetector.$detectedApp.values {
+                detectedApp = wakeWordDetector.detectedApp
+            }
+        }
+    }
+    
     // MARK: - Public Methods
+    func resetWakeWordState() {
+        wakeWordDetector.resetState()
+    }
+    
     func startListening() async throws {
         guard recognitionState == .idle else {
             #if DEBUG
@@ -148,9 +178,13 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
             isListening = true
             startAudioLevelMonitoring()
             
+            // Schedule automatic restart for continuous recognition
+            scheduleAutomaticRestart()
+            
             #if DEBUG
             print("✅ Voice recognition started")
             print("🔊 Voice Isolation: \(isVoiceIsolationEnabled ? "Enabled" : "Disabled")")
+            print("⏰ Automatic restart scheduled in \(maxContinuousTime) seconds")
             #endif
         } catch {
             recognitionState = .idle
@@ -163,14 +197,12 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         
         recognitionState = .stopping
         
-        audioEngine.stop()
-        recognitionRequest?.endAudio()
-        recognitionTask?.cancel()
+        // Cancel restart timer
+        restartTimer?.invalidate()
+        restartTimer = nil
         
-        audioEngine.inputNode.removeTap(onBus: 0)
-        
-        recognitionRequest = nil
-        recognitionTask = nil
+        // Clean up recognition resources
+        cleanupRecognitionTask()
         
         stopAudioLevelMonitoring()
         
@@ -184,6 +216,7 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         isListening = false
         recognitionState = .idle
         audioLevel = 0.0
+        isRestarting = false
         
         #if DEBUG
         print("🛑 Voice recognition stopped")
@@ -268,6 +301,14 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         recognitionRequest.shouldReportPartialResults = true
         recognitionRequest.requiresOnDeviceRecognition = requiresOnDeviceRecognition
         
+        #if DEBUG
+        print("🎙️ Speech recognition request configured:")
+        print("   On-device recognition: \(requiresOnDeviceRecognition)")
+        if let speechRecognizer = speechRecognizer {
+            print("   Supports on-device: \(speechRecognizer.supportsOnDeviceRecognition)")
+        }
+        #endif
+        
         let inputNode = audioEngine.inputNode
         let recordingFormat = inputNode.outputFormat(forBus: 0)
         
@@ -316,25 +357,135 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
             let transcription = result.bestTranscription.formattedString
             currentTranscription = transcription
             
+            #if DEBUG
+            print("🎤 Processing transcription: '\(transcription)' | Final: \(result.isFinal)")
+            print("🔍 Current WakeWordDetector state: \(wakeWordDetector.state)")
+            #endif
+            
+            // Process wake words with current app configurations
+            let userSettings = UserSettings.load()
+            
+            #if DEBUG
+            let appNames = userSettings.registeredApps.map { $0.name }.joined(separator: ", ")
+            print("📱 Registered apps: [\(appNames)]")
+            #endif
+            
+            wakeWordDetector.processTranscription(transcription, apps: userSettings.registeredApps)
+            
             if result.isFinal {
                 recognizedText = transcription
                 #if DEBUG
                 print("📝 Final: \(transcription)")
+                print("🔄 Will restart recognition in 0.2 seconds...")
                 #endif
+                
+                // Clear current transcription to prepare for next
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.currentTranscription = ""
+                }
                 
                 // Restart recognition for continuous listening
                 if isListening {
-                    Task {
-                        stopListening()
-                        try? await startListening()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        if self.isListening {
+                            #if DEBUG
+                            print("🔄 Restarting recognition now...")
+                            #endif
+                            Task {
+                                self.stopListening()
+                                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1초
+                                try? await self.startListening()
+                            }
+                        }
                     }
                 }
             } else {
                 #if DEBUG
-                print("📝 Partial: \(transcription)")
+                if !transcription.isEmpty && transcription.count > 2 {
+                    print("📝 Partial: \(transcription)")
+                }
                 #endif
             }
         }
+    }
+    
+    // MARK: - Continuous Recognition Management
+    
+    private func scheduleAutomaticRestart() {
+        restartTimer?.invalidate()
+        restartTimer = Timer.scheduledTimer(withTimeInterval: maxContinuousTime, repeats: false) { _ in
+            Task { @MainActor in
+                await self.performScheduledRestart()
+            }
+        }
+        
+        #if DEBUG
+        print("⏰ Scheduled automatic restart in \(maxContinuousTime) seconds")
+        #endif
+    }
+    
+    private func performScheduledRestart() async {
+        guard isListening && !isRestarting else { return }
+        
+        // Use async-compatible synchronization instead of semaphore
+        isRestarting = true
+        defer { isRestarting = false }
+        
+        #if DEBUG
+        print("🔄 Performing scheduled recognition restart")
+        #endif
+        
+        // Stop current recognition
+        recognitionState = .stopping
+        cleanupRecognitionTask()
+        
+        // Wait briefly before restart
+        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
+        
+        // Restart if still supposed to be listening
+        if isListening {
+            do {
+                recognitionState = .starting
+                try await startAudioEngine()
+                recognitionState = .listening
+                scheduleAutomaticRestart() // Schedule next restart
+                
+                #if DEBUG
+                print("✅ Recognition restarted successfully")
+                #endif
+            } catch {
+                #if DEBUG
+                print("❌ Failed to restart recognition: \(error)")
+                #endif
+                recognitionState = .idle
+                isListening = false
+                self.error = .audioEngineError
+            }
+        }
+    }
+    
+    private func cleanupRecognitionTask() {
+        #if DEBUG
+        print("🧹 Cleaning up recognition task")
+        #endif
+        
+        // 1. Cancel existing task first
+        recognitionTask?.cancel()
+        
+        // 2. End audio request
+        recognitionRequest?.endAudio()
+        
+        // 3. Stop audio engine
+        audioEngine.stop()
+        
+        // 4. Remove audio tap
+        if audioEngine.inputNode.numberOfInputs > 0 {
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        
+        // 5. Clear references
+        recognitionTask = nil
+        recognitionRequest = nil
     }
     
     // MARK: - Audio Level Monitoring

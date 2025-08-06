@@ -35,7 +35,10 @@
       "Bash(spctl:*)",
       "Bash(./Shells/dev-build-and-test.sh:*)",
       "Bash(defaults read:*)",
-      "Bash(./fix-xcode-build.sh:*)"
+      "Bash(./fix-xcode-build.sh:*)",
+      "WebFetch(domain:www.delasign.com)",
+      "WebFetch(domain:stackoverflow.com)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": []
   }

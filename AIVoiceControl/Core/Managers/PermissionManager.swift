@@ -21,8 +21,15 @@ class PermissionManager: ObservableObject {
     @Published var accessibilityPermissionStatus: PermissionStatus = .notDetermined
     @Published var automationPermissionStatus: PermissionStatus = .notDetermined
     
+    private var permissionCheckTimer: Timer?
+    
     private init() {
         updateAllPermissionStatuses()
+        startPermissionMonitoring()
+    }
+    
+    deinit {
+        permissionCheckTimer?.invalidate()
     }
     
     // MARK: - Permission Status Updates
@@ -68,8 +75,44 @@ class PermissionManager: ObservableObject {
     }
     
     private func updateAccessibilityPermissionStatus() {
+        // First check with AXIsProcessTrusted
         let trusted = AXIsProcessTrusted()
-        accessibilityPermissionStatus = trusted ? .authorized : .denied
+        
+        if trusted {
+            accessibilityPermissionStatus = .authorized
+            return
+        }
+        
+        // If not trusted, try a more comprehensive check
+        // Sometimes AXIsProcessTrusted returns false even when permission is granted
+        let key = kAXTrustedCheckOptionPrompt.takeRetainedValue()
+        let options = [key: false] as CFDictionary
+        let trustedWithOptions = AXIsProcessTrustedWithOptions(options)
+        
+        if trustedWithOptions {
+            accessibilityPermissionStatus = .authorized
+            return
+        }
+        
+        // Final check: try to get the system-wide element
+        // If this succeeds, we have accessibility permission
+        let systemElement = AXUIElementCreateSystemWide()
+        var focusedApp: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(systemElement, kAXFocusedApplicationAttribute as CFString, &focusedApp)
+        
+        if result == .success {
+            accessibilityPermissionStatus = .authorized
+        } else {
+            accessibilityPermissionStatus = .denied
+        }
+        
+        #if DEBUG
+        print("🔐 Accessibility Permission Check:")
+        print("   AXIsProcessTrusted(): \(trusted)")
+        print("   AXIsProcessTrustedWithOptions(): \(trustedWithOptions)")
+        print("   AXUIElementCopyAttributeValue result: \(result)")
+        print("   Final status: \(accessibilityPermissionStatus)")
+        #endif
     }
     
     private func updateAutomationPermissionStatus() {
@@ -337,6 +380,36 @@ class PermissionManager: ObservableObject {
             if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
                 NSWorkspace.shared.open(url)
             }
+        }
+    }
+    
+    // MARK: - Permission Monitoring
+    
+    private func startPermissionMonitoring() {
+        // 2초마다 권한 상태 확인
+        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.updateAllPermissionStatuses()
+            }
+        }
+        
+        #if DEBUG
+        print("📡 Permission monitoring started - checking every 2 seconds")
+        #endif
+    }
+    
+    func stopPermissionMonitoring() {
+        permissionCheckTimer?.invalidate()
+        permissionCheckTimer = nil
+        
+        #if DEBUG
+        print("📡 Permission monitoring stopped")
+        #endif
+    }
+    
+    func resumePermissionMonitoring() {
+        if permissionCheckTimer == nil {
+            startPermissionMonitoring()
         }
     }
 }

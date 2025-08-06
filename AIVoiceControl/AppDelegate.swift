@@ -68,6 +68,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             name: .openSettings,
             object: nil
         )
+        
+        // Add app lifecycle observers for permission monitoring
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationDidBecomeActive),
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationWillResignActive),
+            name: NSApplication.willResignActiveNotification,
+            object: nil
+        )
     }
     
     @objc private func togglePopover() {
@@ -136,6 +151,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             settingsWindowController = SettingsWindowController()
         }
         settingsWindowController?.showWindow()
+    }
+    
+    @MainActor @objc private func applicationDidBecomeActive() {
+        #if DEBUG
+        print("🔄 App became active - resuming permission monitoring")
+        #endif
+        
+        // Resume permission monitoring when app becomes active
+        PermissionManager.shared.resumePermissionMonitoring()
+        
+        // Force immediate permission check
+        PermissionManager.shared.updateAllPermissionStatuses()
+    }
+    
+    @MainActor @objc private func applicationWillResignActive() {
+        #if DEBUG
+        print("⏸️ App will resign active - stopping permission monitoring")
+        #endif
+        
+        // Stop permission monitoring when app goes to background
+        PermissionManager.shared.stopPermissionMonitoring()
     }
     
     #if DEBUG
