@@ -33,7 +33,9 @@
       "Bash(./debug-current-state.swift)",
       "Bash(/Users/jackkim/VibeProjects/AIVoiceControl/DerivedData/AIVoiceControl/Build/Products/Debug/AIVoiceControl.app/Contents/MacOS/AIVoiceControl)",
       "Bash(spctl:*)",
-      "Bash(./Shells/dev-build-and-test.sh:*)"
+      "Bash(./Shells/dev-build-and-test.sh:*)",
+      "Bash(defaults read:*)",
+      "Bash(./fix-xcode-build.sh:*)"
     ],
     "deny": []
   }

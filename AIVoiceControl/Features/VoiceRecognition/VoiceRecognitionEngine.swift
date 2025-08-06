@@ -2,6 +2,10 @@ import Foundation
 import Speech
 import AVFoundation
 
+extension Notification.Name {
+    static let voiceIsolationStateChanged = Notification.Name("voiceIsolationStateChanged")
+}
+
 @MainActor
 class VoiceRecognitionEngine: NSObject, ObservableObject {
     // MARK: - Published Properties
@@ -11,6 +15,8 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
     @Published var error: VoiceRecognitionError?
     @Published var audioLevel: Float = 0.0
     @Published var recognitionState: RecognitionState = .idle
+    @Published var isVoiceIsolationEnabled = false
+    @Published var audioQuality: VoiceIsolationManager.AudioQuality = .unknown
     
     // MARK: - Private Properties
     private var speechRecognizer: SFSpeechRecognizer?
@@ -18,6 +24,7 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
     private var audioLevelTimer: Timer?
+    private lazy var voiceIsolationManager = VoiceIsolationManager()
     
     // MARK: - Configuration
     private let locale: Locale
@@ -58,6 +65,7 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         self.requiresOnDeviceRecognition = requiresOnDeviceRecognition
         super.init()
         setupSpeechRecognizer()
+        setupVoiceIsolationBinding()
     }
     
     deinit {
@@ -81,6 +89,23 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         print("🎤 On-device recognition: \(speechRecognizer?.supportsOnDeviceRecognition ?? false)")
         print("🎤 Available: \(speechRecognizer?.isAvailable ?? false)")
         #endif
+    }
+    
+    private func setupVoiceIsolationBinding() {
+        // Don't initialize VoiceIsolationManager immediately to avoid interfering with permissions
+        // Initialize default values
+        isVoiceIsolationEnabled = UserDefaults.standard.bool(forKey: "VoiceIsolationEnabled")
+        audioQuality = .unknown
+        
+        // Listen for changes in the voice isolation manager
+        Task {
+            for await _ in NotificationCenter.default.notifications(named: .voiceIsolationStateChanged) {
+                await MainActor.run {
+                    isVoiceIsolationEnabled = voiceIsolationManager.isVoiceIsolationEnabled
+                    audioQuality = voiceIsolationManager.audioQuality
+                }
+            }
+        }
     }
     
     // MARK: - Public Methods
@@ -115,6 +140,9 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         }
         
         do {
+            // Configure voice isolation based on user settings
+            await configureVoiceIsolation()
+            
             try await startAudioEngine()
             recognitionState = .listening
             isListening = true
@@ -122,6 +150,7 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
             
             #if DEBUG
             print("✅ Voice recognition started")
+            print("🔊 Voice Isolation: \(isVoiceIsolationEnabled ? "Enabled" : "Disabled")")
             #endif
         } catch {
             recognitionState = .idle
@@ -144,6 +173,13 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         recognitionTask = nil
         
         stopAudioLevelMonitoring()
+        
+        // Clean up voice isolation only if it was initialized
+        if isVoiceIsolationEnabled {
+            Task {
+                try? await voiceIsolationManager.cleanupAudioSession()
+            }
+        }
         
         isListening = false
         recognitionState = .idle
@@ -170,7 +206,58 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         }
     }
     
+    func updateVoiceIsolationSettings(enabled: Bool) async throws {
+        if enabled && !isVoiceIsolationEnabled {
+            try await voiceIsolationManager.enableVoiceIsolation()
+        } else if !enabled && isVoiceIsolationEnabled {
+            try await voiceIsolationManager.disableVoiceIsolation()
+        }
+        
+        // Update our published properties
+        isVoiceIsolationEnabled = voiceIsolationManager.isVoiceIsolationEnabled
+        audioQuality = voiceIsolationManager.audioQuality
+        
+        // Post notification for other listeners
+        NotificationCenter.default.post(name: .voiceIsolationStateChanged, object: nil)
+    }
+    
     // MARK: - Private Methods
+    
+    private func configureVoiceIsolation() async {
+        // Only configure voice isolation if we have microphone permission
+        // This prevents interference with permission requests
+        let microphoneStatus = await PermissionManager.shared.checkMicrophonePermission()
+        guard microphoneStatus == .authorized else {
+            #if DEBUG
+            print("🔊 Skipping voice isolation configuration - no microphone permission")
+            #endif
+            isVoiceIsolationEnabled = false
+            audioQuality = .unknown
+            return
+        }
+        
+        // Check user settings for voice isolation preference
+        let userSettings = UserSettings.load()
+        
+        do {
+            if userSettings.enableVoiceIsolation {
+                try await voiceIsolationManager.configureForVoiceRecognition()
+                // Update our published properties
+                isVoiceIsolationEnabled = voiceIsolationManager.isVoiceIsolationEnabled
+                audioQuality = voiceIsolationManager.audioQuality
+            } else {
+                isVoiceIsolationEnabled = false
+                audioQuality = .good
+            }
+        } catch {
+            #if DEBUG
+            print("⚠️ Voice isolation configuration failed: \(error)")
+            #endif
+            // Continue without voice isolation
+            isVoiceIsolationEnabled = false
+            audioQuality = .unknown
+        }
+    }
     private func startAudioEngine() async throws {
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         

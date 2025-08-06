@@ -20,7 +20,7 @@
         "subject": "기본 음성 인식 구현"
     },
     {
-        "is_done": false,
+        "is_done": true,
         "step": 5,
         "subject": "Voice Isolation 통합"
     },

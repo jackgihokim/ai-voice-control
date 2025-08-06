@@ -63,8 +63,24 @@ struct VoiceSettingsTab: View {
                         }
                     }
                     
-                    Toggle("Enable Voice Isolation", isOn: $viewModel.userSettings.enableVoiceIsolation)
-                        .help("Reduces background noise during recording (macOS 12+)")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle("Enable Voice Isolation", isOn: $viewModel.userSettings.enableVoiceIsolation)
+                            .help("Reduces background noise during recording (macOS 12+)")
+                        
+                        if viewModel.userSettings.enableVoiceIsolation {
+                            HStack {
+                                Text("Audio Quality:")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Text("Monitoring...")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Spacer()
+                            }
+                        }
+                    }
                 }
                 
                 Section("Text-to-Speech") {

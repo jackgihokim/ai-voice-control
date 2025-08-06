@@ -28,15 +28,32 @@ xcodebuild test -project AIVoiceControl.xcodeproj -scheme AIVoiceControl -destin
 # Reset app state (UserDefaults, caches, etc.)
 ./reset-app.sh
 
+# Full development build with permission reset (권장)
+./Shells/dev-build-and-test.sh
+
+# Xcode 빌드 후 권한 문제 해결
+./fix-xcode-build.sh
+
+# Reset app state (UserDefaults, caches, etc.)
+./reset-app.sh
+
 # Debug with reset flag
 # In Xcode: Product → Scheme → Edit Scheme → Arguments
 # Add: -reset-defaults
 ```
 
+### Development Workflow
+1. **전체 테스트**: `./Shells/dev-build-and-test.sh` 사용
+2. **Xcode 개발**: 
+   - Xcode에서 빌드 (Cmd+R)
+   - 권한 다이얼로그가 필요하면 `./fix-xcode-build.sh` 실행
+   - 앱 다시 실행
+
 ### Running the App
 - Build and run through Xcode (Cmd+R)
 - The app will appear in the macOS menu bar, not in the Dock
 - Debug builds include "Reset All Settings" in the context menu
+- **중요**: Xcode 빌드 후 권한 다이얼로그가 안 나오면 `./fix-xcode-build.sh` 실행
 
 ## Architecture Overview
 
