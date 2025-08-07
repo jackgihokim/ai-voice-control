@@ -38,7 +38,8 @@
       "Bash(./fix-xcode-build.sh:*)",
       "WebFetch(domain:www.delasign.com)",
       "WebFetch(domain:stackoverflow.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(./reset-app.sh:*)"
     ],
     "deny": []
   }

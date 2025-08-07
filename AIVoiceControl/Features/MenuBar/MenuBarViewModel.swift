@@ -90,6 +90,25 @@ class MenuBarViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] text in
                 self?.transcribedText = text
+                
+                // 웨이크 워드로 활성화된 앱이 있고, 텍스트가 비어있지 않으면 실시간 입력
+                if let app = self?.detectedApp, 
+                   self?.isWaitingForCommand == true,
+                   !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    
+                    #if DEBUG
+                    print("🎯 Real-time text replacement for \(app.name): '\(text)'")
+                    #endif
+                    
+                    // 실시간 텍스트 교체 (동기적으로 즉시 실행)
+                    let success = AppActivator.shared.replaceTextInCurrentApp(text)
+                    
+                    if !success {
+                        #if DEBUG
+                        print("❌ Real-time text replacement failed for \(app.name)")
+                        #endif
+                    }
+                }
             }
             .store(in: &cancellables)
         
@@ -279,18 +298,11 @@ class MenuBarViewModel: ObservableObject {
         }
         #endif
         
-        // 웨이크 워드로 앱을 활성화한 후 즉시 다음 웨이크 워드를 받을 수 있게 빠르게 리셋
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            #if DEBUG
-            print("🔄 MenuBarViewModel: Resetting for next wake word...")
-            #endif
-            self.voiceEngine?.resetWakeWordState()
-            self.statusMessage = "Ready - Listening for next wake word"
-            
-            #if DEBUG
-            print("✅ MenuBarViewModel: Ready for next wake word")
-            #endif
-        }
+        // 웨이크 워드로 앱이 활성화되면 명령 대기 상태 유지
+        // resetWakeWordState()를 호출하지 않음 - 명령이 입력될 때까지 대기
+        #if DEBUG
+        print("✅ MenuBarViewModel: App activated, waiting for command input...")
+        #endif
     }
     
     @objc private func handleCommandReady(_ notification: Notification) {
@@ -306,8 +318,34 @@ class MenuBarViewModel: ObservableObject {
         print("📝 Command text: '\(command)'")
         #endif
         
-        // TODO: Step 7-8에서 실제 텍스트 입력 구현
-        // For now, just ensure the app is activated and ready
+        // Step 8: 실제 텍스트 입력 구현
+        Task {
+            // 앱이 완전히 활성화될 때까지 잠시 대기
+            try? await Task.sleep(nanoseconds: 500_000_000) // 0.5초
+            
+            #if DEBUG
+            print("🎯 Starting text input to \(app.name)")
+            #endif
+            
+            let success = await AppActivator.shared.inputTextToCurrentApp(command, submitText: false)
+            
+            if success {
+                statusMessage = "Text input successful for \(app.name)"
+                #if DEBUG
+                print("✅ Text input successful for \(app.name)")
+                #endif
+            } else {
+                statusMessage = "Text input failed for \(app.name)"
+                #if DEBUG
+                print("❌ Text input failed for \(app.name)")
+                #endif
+            }
+            
+            // 상태 메시지를 잠시 후 리셋
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                self.statusMessage = "Ready - Listening for next wake word"
+            }
+        }
     }
     
     @objc private func handleCommandTimeout() {

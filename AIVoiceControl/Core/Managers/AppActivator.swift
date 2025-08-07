@@ -154,4 +154,82 @@ class AppActivator {
             $0.bundleIdentifier == frontApp.bundleIdentifier 
         }
     }
+    
+    /// 앱을 활성화하고 텍스트를 입력합니다
+    /// - Parameters:
+    ///   - appConfig: 대상 앱 설정
+    ///   - text: 입력할 텍스트
+    ///   - submitText: true이면 텍스트 입력 후 Enter 키를 전송
+    /// - Returns: 성공 여부
+    func activateAppAndInputText(_ appConfig: AppConfiguration, text: String, submitText: Bool = false) async -> Bool {
+        // 1. 앱 활성화
+        guard activateApp(appConfig) else {
+            #if DEBUG
+            print("❌ Failed to activate app for text input: \(appConfig.name)")
+            #endif
+            return false
+        }
+        
+        // 2. 앱이 완전히 활성화될 때까지 대기
+        try? await Task.sleep(nanoseconds: 300_000_000) // 0.3초
+        
+        // 3. 텍스트 입력
+        do {
+            if submitText {
+                try await TextInputAutomator.shared.inputTextAndSubmit(text, app: appConfig)
+            } else {
+                try await TextInputAutomator.shared.inputTextToApp(text, app: appConfig)
+            }
+            
+            #if DEBUG
+            print("✅ Successfully input text to \(appConfig.name)")
+            #endif
+            return true
+        } catch {
+            #if DEBUG
+            print("❌ Failed to input text to \(appConfig.name): \(error)")
+            #endif
+            return false
+        }
+    }
+    
+    /// 현재 포커스된 앱에 텍스트를 입력합니다
+    /// - Parameters:
+    ///   - text: 입력할 텍스트
+    ///   - submitText: true이면 텍스트 입력 후 Enter 키를 전송
+    /// - Returns: 성공 여부
+    func inputTextToCurrentApp(_ text: String, submitText: Bool = false) async -> Bool {
+        do {
+            if submitText {
+                try await TextInputAutomator.shared.inputTextAndSubmit(text)
+            } else {
+                try TextInputAutomator.shared.inputTextToFocusedApp(text)
+            }
+            
+            #if DEBUG
+            print("✅ Successfully input text to current app")
+            #endif
+            return true
+        } catch {
+            #if DEBUG
+            print("❌ Failed to input text to current app: \(error)")
+            #endif
+            return false
+        }
+    }
+    
+    /// 현재 포커스된 앱의 텍스트를 실시간으로 교체합니다 (음성 인식 중)
+    /// - Parameter text: 교체할 텍스트
+    /// - Returns: 성공 여부
+    func replaceTextInCurrentApp(_ text: String) -> Bool {
+        do {
+            try TextInputAutomator.shared.replaceCurrentText(text)
+            return true
+        } catch {
+            #if DEBUG
+            print("❌ Failed to replace text in current app: \(error)")
+            #endif
+            return false
+        }
+    }
 }

@@ -45,26 +45,31 @@ class PermissionManager: ObservableObject {
         #if os(macOS)
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
         
-        #if DEBUG
-        print("🎤 Updating microphone permission status: \(status)")
-        print("🎤 Raw status value: \(status.rawValue)")
-        print("🔍 Bundle ID: \(Bundle.main.bundleIdentifier ?? "Unknown")")
-        print("🔍 Executable path: \(Bundle.main.executablePath ?? "Unknown")")
-        print("🔍 Main bundle path: \(Bundle.main.bundlePath)")
-        #endif
-        
+        let newPermissionStatus: PermissionStatus
         switch status {
         case .authorized:
-            microphonePermissionStatus = .authorized
+            newPermissionStatus = .authorized
         case .denied:
-            microphonePermissionStatus = .denied
+            newPermissionStatus = .denied
         case .restricted:
-            microphonePermissionStatus = .restricted
+            newPermissionStatus = .restricted
         case .notDetermined:
-            microphonePermissionStatus = .notDetermined
+            newPermissionStatus = .notDetermined
         @unknown default:
-            microphonePermissionStatus = .notDetermined
+            newPermissionStatus = .notDetermined
         }
+        
+        #if DEBUG
+        // 권한 상태가 변경되었을 때만 로그 출력
+        if newPermissionStatus != microphonePermissionStatus {
+            print("🎤 Microphone permission status changed: \(status)")
+            print("🎤 Raw status value: \(status.rawValue)")
+            print("🔍 Bundle ID: \(Bundle.main.bundleIdentifier ?? "Unknown")")
+            print("🔍 New permission status: \(newPermissionStatus)")
+        }
+        #endif
+        
+        microphonePermissionStatus = newPermissionStatus
         #else
         microphonePermissionStatus = AVAudioSession.sharedInstance().recordPermission.permissionStatus
         #endif
@@ -75,50 +80,40 @@ class PermissionManager: ObservableObject {
     }
     
     private func updateAccessibilityPermissionStatus() {
-        // First check with AXIsProcessTrusted
+        // 정확한 권한 체크: AXIsProcessTrusted만 사용
         let trusted = AXIsProcessTrusted()
         
-        if trusted {
-            accessibilityPermissionStatus = .authorized
-            return
-        }
-        
-        // If not trusted, try a more comprehensive check
-        // Sometimes AXIsProcessTrusted returns false even when permission is granted
-        let key = kAXTrustedCheckOptionPrompt.takeRetainedValue()
-        let options = [key: false] as CFDictionary
-        let trustedWithOptions = AXIsProcessTrustedWithOptions(options)
-        
-        if trustedWithOptions {
-            accessibilityPermissionStatus = .authorized
-            return
-        }
-        
-        // Final check: try to get the system-wide element
-        // If this succeeds, we have accessibility permission
-        let systemElement = AXUIElementCreateSystemWide()
-        var focusedApp: CFTypeRef?
-        let result = AXUIElementCopyAttributeValue(systemElement, kAXFocusedApplicationAttribute as CFString, &focusedApp)
-        
-        if result == .success {
-            accessibilityPermissionStatus = .authorized
+        // 첫 실행시에는 notDetermined 상태를 유지
+        let newPermissionStatus: PermissionStatus
+        if accessibilityPermissionStatus == .notDetermined && !trusted {
+            // 처음 실행하고 권한이 없으면 notDetermined 유지
+            newPermissionStatus = .notDetermined
         } else {
-            accessibilityPermissionStatus = .denied
+            // 권한 요청 후 또는 이미 권한이 있으면 정확한 상태 반영
+            newPermissionStatus = trusted ? .authorized : .denied
         }
         
         #if DEBUG
-        print("🔐 Accessibility Permission Check:")
-        print("   AXIsProcessTrusted(): \(trusted)")
-        print("   AXIsProcessTrustedWithOptions(): \(trustedWithOptions)")
-        print("   AXUIElementCopyAttributeValue result: \(result)")
-        print("   Final status: \(accessibilityPermissionStatus)")
+        // 권한 상태가 변경되었을 때만 로그 출력 (마이크 권한과 동일한 패턴)
+        if newPermissionStatus != accessibilityPermissionStatus {
+            print("🔐 Accessibility Permission Status Changed:")
+            print("   AXIsProcessTrusted(): \(trusted)")
+            print("   Previous status: \(accessibilityPermissionStatus)")
+            print("   New status: \(newPermissionStatus)")
+        }
         #endif
+        
+        accessibilityPermissionStatus = newPermissionStatus
     }
     
     private func updateAutomationPermissionStatus() {
         // Automation permission is handled per-app and requested when first used
-        // For now, assume it's available (will be checked when actually needed)
-        automationPermissionStatus = .authorized
+        // 첫 실행시에는 notDetermined 상태 유지
+        if automationPermissionStatus == .notDetermined {
+            // 처음 실행시에는 notDetermined 유지 (Request Permission 버튼 표시용)
+            automationPermissionStatus = .notDetermined
+        }
+        // 실제 권한 체크는 AppleScript 실행시에 수행
     }
     
     // MARK: - Permission Requests
@@ -330,8 +325,29 @@ class PermissionManager: ObservableObject {
     
     func requestAccessibilityPermission() -> PermissionStatus {
         // Accessibility permission must be granted manually by the user in System Preferences
-        // We can only check the current status and guide the user to System Preferences
-        updateAccessibilityPermissionStatus()
+        // Show the permission dialog to guide the user
+        
+        #if DEBUG
+        print("🔐 Requesting Accessibility permission...")
+        #endif
+        
+        // 권한 요청 다이얼로그 표시
+        let checkOptionKey = kAXTrustedCheckOptionPrompt.takeRetainedValue()
+        let options = [checkOptionKey: true] as CFDictionary  // true로 설정해서 다이얼로그 표시
+        let trusted = AXIsProcessTrustedWithOptions(options)
+        
+        // 권한 요청 후 상태 업데이트
+        if trusted {
+            accessibilityPermissionStatus = .authorized
+        } else {
+            // 권한 요청 후에는 denied로 변경 (사용자가 시스템 설정에서 승인해야 함)
+            accessibilityPermissionStatus = .denied
+        }
+        
+        #if DEBUG
+        print("🔐 Accessibility permission result: \(accessibilityPermissionStatus)")
+        #endif
+        
         return accessibilityPermissionStatus
     }
     
@@ -386,10 +402,26 @@ class PermissionManager: ObservableObject {
     // MARK: - Permission Monitoring
     
     private func startPermissionMonitoring() {
+        // 모든 권한이 승인되었으면 모니터링 중지
+        if areAllCriticalPermissionsGranted() {
+            #if DEBUG
+            print("📡 All permissions granted - no monitoring needed")
+            #endif
+            return
+        }
+        
         // 2초마다 권한 상태 확인
         permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.updateAllPermissionStatuses()
+                
+                // 모든 권한이 승인되면 타이머 중지
+                if let self = self, self.areAllCriticalPermissionsGranted() {
+                    #if DEBUG
+                    print("📡 All permissions granted - stopping monitoring")
+                    #endif
+                    self.stopPermissionMonitoring()
+                }
             }
         }
         

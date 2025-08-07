@@ -30,12 +30,12 @@
         "subject": "웨이크 워드 시스템 구현"
     },
     {
-        "is_done": false,
+        "is_done": true,
         "step": 7,
         "subject": "Accessibility API 기반 앱 제어"
     },
     {
-        "is_done": false,
+        "is_done": true,
         "step": 8,
         "subject": "텍스트 입력 자동화"
     },

@@ -38,7 +38,8 @@ class WakeWordDetector: ObservableObject {
             }
             
         case .wakeWordDetected(let app):
-            commandBuffer = text
+            // 웨이크 워드로 앱이 활성화된 상태에서는 모든 입력을 명령으로 처리
+            // 단, 다른 앱의 웨이크 워드가 감지되면 앱 전환
             
             // 새로운 웨이크 워드가 감지되면 이전 상태를 리셋하고 새로 시작
             if let newApp = detectWakeWord(in: lowercasedText, apps: apps), newApp.id != app.id {
@@ -49,11 +50,15 @@ class WakeWordDetector: ObservableObject {
                 return
             }
             
-            if detectExecutionWord(in: lowercasedText) {
-                handleExecutionWord(app: app)
-            } else if text.count > 200 {
-                resetState()
+            // 웨이크 워드가 아니면 모든 입력을 명령 버퍼에 저장
+            // 실시간 텍스트 입력이 MenuBarViewModel에서 처리됨
+            commandBuffer = text
+            
+            #if DEBUG
+            if !text.isEmpty {
+                print("📝 Command buffer updated for \(app.name): '\(text)'")
             }
+            #endif
             
         case .waitingForCommand:
             commandBuffer = text
@@ -198,11 +203,11 @@ class WakeWordDetector: ObservableObject {
         
         state = .wakeWordDetected(app: app)
         detectedApp = app
-        isWaitingForCommand = false  // 웨이크 워드만으로는 명령 대기 상태로 가지 않음
+        isWaitingForCommand = true  // 웨이크 워드 감지 후 바로 명령 대기 상태로 전환
         commandBuffer = ""
         
         #if DEBUG
-        print("🎯 Wake word detected for \(app.name) - activating app only")
+        print("🎯 Wake word detected for \(app.name) - ready for real-time text input")
         #endif
         
         // 웨이크 워드 감지 알림 전송
