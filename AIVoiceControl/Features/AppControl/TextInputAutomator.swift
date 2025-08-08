@@ -1,6 +1,7 @@
 import Foundation
 import ApplicationServices
 import AppKit
+import Cocoa
 
 /// Accessibility API를 사용한 텍스트 입력 자동화 클래스
 @MainActor
@@ -9,6 +10,13 @@ class TextInputAutomator {
     // MARK: - Singleton
     static let shared = TextInputAutomator()
     private init() {}
+    
+    // MARK: - Properties
+    
+    /// 마지막으로 입력된 텍스트를 추적 (증분 업데이트용)
+    private var lastInputText: String = ""
+    /// 현재 활성화된 앱의 bundle ID
+    private var currentAppBundleId: String?
     
     // MARK: - Types
     
@@ -98,6 +106,91 @@ class TextInputAutomator {
         #endif
         
         try inputTextToFocusedApp(text)
+    }
+    
+    /// 증분 방식으로 텍스트를 입력합니다 (이전 텍스트와의 차이점만 추가)
+    /// - Parameter newText: 새로운 전체 텍스트
+    /// - Throws: TextInputError
+    func inputTextIncremental(_ newText: String) throws {
+        guard isAccessibilityEnabled() else {
+            throw TextInputError.accessibilityNotAuthorized
+        }
+        
+        // 현재 활성 앱 확인
+        let currentBundleId = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        
+        // 앱이 변경되었으면 lastInputText 리셋
+        if currentBundleId != currentAppBundleId {
+            lastInputText = ""
+            currentAppBundleId = currentBundleId
+        }
+        
+        #if DEBUG
+        print("🔄 Incremental text input")
+        print("   Previous: '\(lastInputText)'")
+        print("   New: '\(newText)'")
+        #endif
+        
+        // 텍스트 차이 계산
+        let commonPrefixLength = findCommonPrefixLength(lastInputText, newText)
+        let deleteCount = lastInputText.count - commonPrefixLength
+        let addText = String(newText.dropFirst(commonPrefixLength))
+        
+        #if DEBUG
+        print("   Common prefix length: \(commonPrefixLength)")
+        print("   Delete count: \(deleteCount)")
+        print("   Text to add: '\(addText)'")
+        #endif
+        
+        // 삭제가 필요한 경우 백스페이스 전송
+        if deleteCount > 0 {
+            for _ in 0..<deleteCount {
+                try KeyboardSimulator.shared.sendBackspace()
+                // 한글 입력을 위한 긴 딜레이
+                Thread.sleep(forTimeInterval: 0.05) // 0.05초로 증가
+            }
+        }
+        
+        // 새로운 텍스트 추가
+        if !addText.isEmpty {
+            try inputTextViaKeyboard(addText)
+        }
+        
+        // 마지막 입력 텍스트 업데이트
+        lastInputText = newText
+        
+        #if DEBUG
+        print("✅ Incremental input completed")
+        #endif
+    }
+    
+    /// 두 문자열의 공통 접두사 길이를 찾습니다
+    private func findCommonPrefixLength(_ str1: String, _ str2: String) -> Int {
+        let minLength = min(str1.count, str2.count)
+        var commonLength = 0
+        
+        let chars1 = Array(str1)
+        let chars2 = Array(str2)
+        
+        for i in 0..<minLength {
+            if chars1[i] == chars2[i] {
+                commonLength += 1
+            } else {
+                break
+            }
+        }
+        
+        return commonLength
+    }
+    
+    /// 추적 중인 텍스트를 리셋합니다
+    func resetIncrementalText() {
+        lastInputText = ""
+        currentAppBundleId = nil
+        
+        #if DEBUG
+        print("🔄 Incremental text tracking reset")
+        #endif
     }
     
     /// Enter 키를 시뮬레이션합니다
@@ -201,18 +294,18 @@ class TextInputAutomator {
     /// 키보드 시뮬레이션으로 텍스트를 교체
     private func replaceTextViaKeyboard(_ text: String) throws {
         #if DEBUG
-        print("⌨️ Using keyboard simulation for text replacement")
+        print("📋 Using clipboard replacement method to avoid IME conflicts: '\(text)'")
         #endif
         
         // 전체 선택 (Command+A)
         try KeyboardSimulator.shared.selectAll()
         usleep(50_000) // 0.05초 대기
         
-        // 새 텍스트 입력
-        try KeyboardSimulator.shared.typeText(text)
+        // 모든 텍스트를 클립보드 방식으로 입력하여 IME 충돌 방지
+        try inputTextViaClipboard(text)
         
         #if DEBUG
-        print("✅ Keyboard text replacement completed")
+        print("✅ Clipboard text replacement completed")
         #endif
     }
     
@@ -354,82 +447,67 @@ class TextInputAutomator {
     /// 키보드 시뮬레이션으로 텍스트 입력
     private func inputTextViaKeyboard(_ text: String) throws {
         #if DEBUG
-        print("⌨️ Using keyboard simulation for text input")
+        print("📋 Using clipboard method for all text to avoid IME conflicts: '\(text)'")
         #endif
         
-        // CGEvent를 사용한 키보드 시뮬레이션
-        for character in text {
-            try simulateKeyPress(for: character)
+        // 모든 텍스트를 클립보드 방식으로 입력하여 IME 충돌 방지
+        try inputTextViaClipboard(text)
+        
+        #if DEBUG
+        print("✅ Clipboard text input completed")
+        #endif
+    }
+    
+    
+    /// 텍스트에 한글이 포함되어 있는지 확인
+    private func containsKoreanText(_ text: String) -> Bool {
+        return text.contains { isKoreanCharacter($0) }
+    }
+    
+    /// 클립보드를 통한 텍스트 입력
+    private func inputTextViaClipboard(_ text: String) throws {
+        #if DEBUG
+        print("📋 Using clipboard for text input: '\(text)'")
+        #endif
+        
+        // 현재 클립보드 내용 백업
+        let pasteboard = NSPasteboard.general
+        let originalContent = pasteboard.string(forType: .string)
+        
+        // 새 텍스트를 클립보드에 복사
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        
+        // 짧은 대기 후 붙여넣기
+        usleep(50_000) // 0.05초
+        
+        try KeyboardSimulator.shared.paste()
+        
+        // 원래 클립보드 내용 복원 (선택적)
+        if let original = originalContent {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                pasteboard.clearContents()
+                pasteboard.setString(original, forType: .string)
+            }
         }
         
         #if DEBUG
-        print("✅ Keyboard simulation completed")
+        print("✅ Clipboard text input completed")
         #endif
     }
     
-    /// 개별 문자에 대한 키 입력 시뮬레이션
-    private func simulateKeyPress(for character: Character) throws {
-        let characterString = String(character)
-        
-        // 특수 문자 처리
-        if let keyCode = getKeyCode(for: character) {
-            simulateKeyCode(keyCode)
-        } else {
-            // Unicode 문자 처리
-            simulateUnicodeCharacter(characterString)
-        }
-        
-        // 키 간격 조정 (너무 빠르면 일부 앱에서 인식하지 못함)
-        usleep(10_000) // 0.01초
+    
+    /// 문자가 한글인지 확인
+    private func isKoreanCharacter(_ character: Character) -> Bool {
+        guard let scalar = character.unicodeScalars.first else { return false }
+        let value = scalar.value
+        // 한글 완성형 범위: AC00-D7AF
+        // 한글 자모 범위: 1100-11FF, 3130-318F
+        return (value >= 0xAC00 && value <= 0xD7AF) ||
+               (value >= 0x1100 && value <= 0x11FF) ||
+               (value >= 0x3130 && value <= 0x318F)
     }
     
-    /// 문자에 대응하는 키 코드 반환
-    private func getKeyCode(for character: Character) -> CGKeyCode? {
-        let keyMap: [Character: CGKeyCode] = [
-            " ": 49,  // Space
-            "\n": 36, // Return
-            "\t": 48, // Tab
-            "\r": 36, // Return (alternative)
-            
-            "a": 0, "b": 11, "c": 8, "d": 2, "e": 14,
-            "f": 3, "g": 5, "h": 4, "i": 34, "j": 38,
-            "k": 40, "l": 37, "m": 46, "n": 45, "o": 31,
-            "p": 35, "q": 12, "r": 15, "s": 1, "t": 17,
-            "u": 32, "v": 9, "w": 13, "x": 7, "y": 16, "z": 6,
-            
-            "0": 29, "1": 18, "2": 19, "3": 20, "4": 21,
-            "5": 23, "6": 22, "7": 26, "8": 28, "9": 25
-        ]
-        
-        return keyMap[Character(character.lowercased())]
-    }
-    
-    /// 키 코드로 키 입력 시뮬레이션
-    private func simulateKeyCode(_ keyCode: CGKeyCode) {
-        let keyDownEvent = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true)
-        let keyUpEvent = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false)
-        
-        keyDownEvent?.post(tap: .cghidEventTap)
-        usleep(5_000) // 0.005초
-        keyUpEvent?.post(tap: .cghidEventTap)
-    }
-    
-    /// Unicode 문자 입력 시뮬레이션
-    private func simulateUnicodeCharacter(_ character: String) {
-        for unicodeScalar in character.unicodeScalars {
-            let keyDownEvent = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true)
-            let keyUpEvent = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: false)
-            
-            // UInt32를 UniChar(UInt16)로 변환
-            let unicharValue = UInt16(unicodeScalar.value & 0xFFFF)
-            keyDownEvent?.keyboardSetUnicodeString(stringLength: 1, unicodeString: [unicharValue])
-            keyUpEvent?.keyboardSetUnicodeString(stringLength: 1, unicodeString: [unicharValue])
-            
-            keyDownEvent?.post(tap: .cghidEventTap)
-            usleep(5_000)
-            keyUpEvent?.post(tap: .cghidEventTap)
-        }
-    }
 }
 
 // MARK: - Async Extensions

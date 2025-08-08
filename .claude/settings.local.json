@@ -39,7 +39,9 @@
       "WebFetch(domain:www.delasign.com)",
       "WebFetch(domain:stackoverflow.com)",
       "WebFetch(domain:github.com)",
-      "Bash(./reset-app.sh:*)"
+      "Bash(./reset-app.sh:*)",
+      "Bash(pgrep:*)",
+      "Bash(console:*)"
     ],
     "deny": []
   }

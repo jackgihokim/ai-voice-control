@@ -8,7 +8,6 @@ class WakeWordDetector: ObservableObject {
     
     private var wakeWordTimer: Timer?
     private let commandTimeout: TimeInterval = 5.0
-    private let executionWords = ["Execute", "실행", "Run", "Go", "시작"]
     
     enum DetectionState {
         case idle
@@ -60,6 +59,16 @@ class WakeWordDetector: ObservableObject {
             }
             #endif
             
+            // 실시간 텍스트 스트리밍을 위한 알림 전송
+            NotificationCenter.default.post(
+                name: .commandBufferUpdated,
+                object: nil,
+                userInfo: [
+                    "app": app,
+                    "text": text
+                ]
+            )
+            
         case .waitingForCommand:
             commandBuffer = text
             
@@ -74,10 +83,13 @@ class WakeWordDetector: ObservableObject {
                 }
             }
             
-            if let app = detectedApp, detectExecutionWord(in: lowercasedText) {
-                handleExecutionWord(app: app)
-            } else if text.count > 200 {
-                resetState()
+            // Auto-submit when text gets long enough (no execution words needed)
+            if text.count > 200 {
+                if let app = detectedApp {
+                    handleCommand(app: app)
+                } else {
+                    resetState()
+                }
             }
             
         case .commandReceived:
@@ -163,38 +175,6 @@ class WakeWordDetector: ObservableObject {
         return nil
     }
     
-    private func detectExecutionWord(in text: String) -> Bool {
-        let cleanText = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        #if DEBUG
-        print("🔎 [IMPROVED] Checking for execution words: [\(executionWords.joined(separator: ", "))]")
-        #endif
-        
-        // 실행 워드는 더 관대한 임계값 사용 (0.7)
-        let executionThreshold: Double = 0.7
-        
-        for executionWord in executionWords {
-            let result = FuzzyMatching.matchWakeWord(
-                wakeWord: executionWord,
-                in: cleanText,
-                threshold: executionThreshold
-            )
-            
-            if result.matched {
-                #if DEBUG
-                let matchType = result.similarity >= 1.0 ? "exact" : "fuzzy(\(String(format: "%.2f", result.similarity)))"
-                print("✅ Execution word detected (\(matchType)): '\(executionWord)'")
-                print("   Similarity: \(String(format: "%.3f", result.similarity)) | Full text: '\(text)'")
-                #endif
-                return true
-            }
-        }
-        
-        #if DEBUG
-        print("❌ No execution word found in: '\(text)' (threshold: \(executionThreshold))")
-        #endif
-        return false
-    }
     
     private func handleWakeWordDetection(app: AppConfiguration) {
         // 이전 타이머가 있다면 정리
@@ -223,7 +203,7 @@ class WakeWordDetector: ObservableObject {
         #endif
     }
     
-    private func handleExecutionWord(app: AppConfiguration) {
+    private func handleCommand(app: AppConfiguration) {
         state = .commandReceived
         
         let command = extractCommand(from: commandBuffer, app: app)
@@ -251,14 +231,6 @@ class WakeWordDetector: ObservableObject {
         for wakeWord in app.wakeWords {
             command = command.replacingOccurrences(
                 of: wakeWord,
-                with: "",
-                options: .caseInsensitive
-            )
-        }
-        
-        for executionWord in executionWords {
-            command = command.replacingOccurrences(
-                of: executionWord,
                 with: "",
                 options: .caseInsensitive
             )
@@ -313,4 +285,5 @@ extension Notification.Name {
     static let wakeWordDetected = Notification.Name("wakeWordDetected")
     static let commandReady = Notification.Name("commandReady")
     static let commandTimeout = Notification.Name("commandTimeout")
+    static let commandBufferUpdated = Notification.Name("commandBufferUpdated")
 }

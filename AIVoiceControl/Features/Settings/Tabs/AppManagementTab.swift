@@ -30,20 +30,6 @@ struct AppManagementTab: View {
                 
                 Divider()
                 
-                // Default Settings
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Default Execution Words")
-                        .font(.headline)
-                    
-                    Text("These execution words will be used for all new apps")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    // Default execution words list with add/remove functionality
-                    DefaultExecutionWordsView(executionWords: $viewModel.userSettings.defaultExecutionWords)
-                }
-                
-                Divider()
                 
                 // Registered Apps
                 VStack(alignment: .leading, spacing: 12) {
@@ -111,7 +97,6 @@ struct AppManagementTab: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .sheet(isPresented: $showingAddApp) {
             AddAppSheet(
-                defaultExecutionWords: viewModel.userSettings.defaultExecutionWords,
                 onAddApp: { app in
                     viewModel.addApp(app)
                     showingAddApp = false
@@ -225,7 +210,6 @@ struct AppRow: View {
 // MARK: - Add App Sheet
 
 struct AddAppSheet: View {
-    let defaultExecutionWords: [String]
     let onAddApp: (AppConfiguration) -> Void
     let onCancel: () -> Void
     
@@ -432,7 +416,6 @@ struct AddAppSheet: View {
                                     name: app.name,
                                     bundleIdentifier: app.bundleIdentifier,
                                     wakeWords: wakeWords,
-                                    executionWords: defaultExecutionWords,
                                     iconImage: app.icon
                                 )
                                 onAddApp(config)
@@ -531,7 +514,6 @@ struct EditAppSheet: View {
     
     @State private var editedApp: AppConfiguration
     @State private var newWakeWord = ""
-    @State private var newExecutionWord = ""
     @State private var useCustomVoiceSettings = false
     @State private var availableVoices: [AVSpeechSynthesisVoice] = []
     @State private var isTestingVoice = false
@@ -606,66 +588,10 @@ struct EditAppSheet: View {
                             .disabled(newWakeWord.isEmpty)
                         }
                     }
-                    
-                    // Execution words section
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Execution Words")
-                        
-                        // Execution word list - horizontal layout
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                            ForEach(editedApp.executionWords, id: \.self) { word in
-                                ZStack(alignment: .topTrailing) {
-                                    Text(word)
-                                        .font(.caption)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.accentColor.opacity(0.1))
-                                        .cornerRadius(4)
-                                    
-                                    Button(action: {
-                                        if let index = editedApp.executionWords.firstIndex(of: word) {
-                                            // Use delayed update to avoid ViewBridge conflicts
-                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                                // Create completely new array without the word
-                                                var newExecutionWords = self.editedApp.executionWords
-                                                newExecutionWords.remove(at: index)
-                                                self.editedApp.executionWords = newExecutionWords
-                                                
-                                                // Force complete view refresh after array update
-                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                                    self.viewRefreshID = UUID()
-                                                }
-                                            }
-                                        }
-                                    }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .disabled(editedApp.executionWords.count <= 1) // At least one execution word required
-                                    .offset(x: 4, y: -4)
-                                }
-                            }
-                        }
-                        
-                        // Add new execution word
-                        HStack {
-                            UltraSimpleTextField("Add execution word", text: $newExecutionWord) {
-                                addExecutionWordToEditedApp()
-                            }
-                            
-                            Button("Add") {
-                                addExecutionWordToEditedApp()
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(newExecutionWord.isEmpty)
-                        }
-                    }
                 }
                 
                 Section("Behavior") {
-                    Toggle("Auto-submit on execution word", isOn: $editedApp.autoSubmit)
+                    Toggle("Auto-submit after voice input", isOn: $editedApp.autoSubmit)
                     
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Prompt Template")
@@ -821,25 +747,6 @@ struct EditAppSheet: View {
         }
     }
     
-    private func addExecutionWordToEditedApp() {
-        if !newExecutionWord.isEmpty && !editedApp.executionWords.contains(newExecutionWord) {
-            let wordToAdd = newExecutionWord
-            newExecutionWord = "" // Clear immediately to prevent re-entry
-            
-            // Use delayed update to avoid ViewBridge conflicts
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                // Create completely new array to force SwiftUI update
-                var newExecutionWords = self.editedApp.executionWords
-                newExecutionWords.append(wordToAdd)
-                self.editedApp.executionWords = newExecutionWords
-                
-                // Force complete view refresh after array update
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    self.viewRefreshID = UUID()
-                }
-            }
-        }
-    }
     
     private func loadAllSystemVoices() {
         // Load voices on background queue to prevent UI blocking
@@ -902,62 +809,3 @@ struct EditAppSheet: View {
     }
 }
 
-// MARK: - Default Execution Words View
-
-struct DefaultExecutionWordsView: View {
-    @Binding var executionWords: [String]
-    @State private var newExecutionWord = ""
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Execution word list - horizontal layout
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                ForEach(executionWords, id: \.self) { word in
-                    ZStack(alignment: .topTrailing) {
-                        Text(word)
-                            .font(.caption)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.accentColor.opacity(0.1))
-                            .cornerRadius(4)
-                        
-                        Button(action: {
-                            if let index = executionWords.firstIndex(of: word) {
-                                // Force SwiftUI update by creating a new array
-                                executionWords = executionWords.enumerated().compactMap { $0.offset == index ? nil : $0.element }
-                            }
-                        }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(executionWords.count <= 1) // At least one execution word required
-                        .offset(x: 4, y: -4)
-                    }
-                }
-            }
-            
-            // Add new execution word
-            HStack {
-                UltraSimpleTextField("Add execution word", text: $newExecutionWord, width: 150) {
-                    addExecutionWord()
-                }
-                
-                Button("Add") {
-                    addExecutionWord()
-                }
-                .buttonStyle(.bordered)
-                .disabled(newExecutionWord.isEmpty)
-            }
-        }
-    }
-    
-    private func addExecutionWord() {
-        if !newExecutionWord.isEmpty && !executionWords.contains(newExecutionWord) {
-            // Force SwiftUI update by creating a new array
-            executionWords = executionWords + [newExecutionWord]
-            newExecutionWord = ""
-        }
-    }
-}

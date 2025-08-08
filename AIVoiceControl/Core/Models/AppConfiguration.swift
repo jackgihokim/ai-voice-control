@@ -8,12 +8,35 @@
 import Foundation
 import AppKit
 
+/// 텍스트 입력 모드
+enum TextInputMode: String, Codable, CaseIterable {
+    case incremental = "incremental"  // 차이점만 추가 (스트림 방식)
+    case replace = "replace"          // 전체 교체 (기존 방식)
+    
+    var displayName: String {
+        switch self {
+        case .incremental:
+            return "Stream (like ChatGPT)"
+        case .replace:
+            return "Replace All"
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .incremental:
+            return "Add only new text incrementally"
+        case .replace:
+            return "Replace entire text each time"
+        }
+    }
+}
+
 struct AppConfiguration: Codable, Identifiable, Equatable {
     let id = UUID()
     var name: String
     var bundleIdentifier: String
     var wakeWords: [String]  // Changed to array to support multiple wake words
-    var executionWords: [String]   // Changed to array to support multiple execution words
     var isEnabled: Bool
     var promptTemplate: String
     var autoSubmit: Bool
@@ -24,17 +47,19 @@ struct AppConfiguration: Codable, Identifiable, Equatable {
     var speechRate: Double?
     var voiceOutputVolume: Double?
     
+    // Text input mode
+    var textInputMode: TextInputMode = .incremental
+    
     // Custom coding keys to handle UUID
     private enum CodingKeys: String, CodingKey {
-        case name, bundleIdentifier, wakeWords, executionWords, isEnabled, promptTemplate, autoSubmit, windowTitle
-        case selectedVoiceId, speechRate, voiceOutputVolume
+        case name, bundleIdentifier, wakeWords, isEnabled, promptTemplate, autoSubmit, windowTitle
+        case selectedVoiceId, speechRate, voiceOutputVolume, textInputMode
     }
     
-    init(name: String, bundleIdentifier: String, wakeWords: [String]? = nil, executionWords: [String]? = nil, iconImage: NSImage? = nil) {
+    init(name: String, bundleIdentifier: String, wakeWords: [String]? = nil, iconImage: NSImage? = nil) {
         self.name = name
         self.bundleIdentifier = bundleIdentifier
         self.wakeWords = wakeWords ?? [name]  // Use app name as default wake word
-        self.executionWords = executionWords ?? ["Execute", "Run", "Go"]  // Default execution words
         self.isEnabled = true
         self.promptTemplate = "{input}"
         self.autoSubmit = true

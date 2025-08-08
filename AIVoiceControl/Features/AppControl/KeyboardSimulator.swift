@@ -178,6 +178,12 @@ class KeyboardSimulator {
         try simulateKey("return")
     }
     
+    /// Backspace 키를 시뮬레이션합니다
+    /// - Throws: KeyboardError
+    func sendBackspace() throws {
+        try simulateKey("delete")
+    }
+    
     /// 텍스트를 입력하고 Enter를 누릅니다
     /// - Parameter text: 입력할 텍스트
     /// - Throws: KeyboardError
@@ -237,9 +243,30 @@ class KeyboardSimulator {
             keyUpEvent?.keyboardSetUnicodeString(stringLength: 1, unicodeString: [unicharValue])
             
             keyDownEvent?.post(tap: .cghidEventTap)
-            usleep(5_000)
+            
+            // 한글 문자인지 확인하고 적절한 딜레이 적용
+            let isKorean = isKoreanUnicodeScalar(unicodeScalar)
+            let delay: UInt32 = isKorean ? 20_000 : 10_000 // 한글: 0.02초, 기타: 0.01초
+            usleep(delay)
+            
             keyUpEvent?.post(tap: .cghidEventTap)
+            
+            #if DEBUG
+            if isKorean {
+                print("🇰🇷 Korean Unicode character typed: U+\(String(format: "%04X", unicodeScalar.value))")
+            }
+            #endif
         }
+    }
+    
+    /// Unicode scalar가 한글인지 확인
+    private func isKoreanUnicodeScalar(_ scalar: UnicodeScalar) -> Bool {
+        let value = scalar.value
+        // 한글 완성형 범위: AC00-D7AF
+        // 한글 자모 범위: 1100-11FF, 3130-318F
+        return (value >= 0xAC00 && value <= 0xD7AF) ||
+               (value >= 0x1100 && value <= 0x11FF) ||
+               (value >= 0x3130 && value <= 0x318F)
     }
     
     /// Accessibility 권한이 활성화되어 있는지 확인

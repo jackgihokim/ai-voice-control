@@ -40,9 +40,9 @@
         "subject": "텍스트 입력 자동화"
     },
     {
-        "is_done": false,
+        "is_done": true,
         "step": 9,
-        "subject": "Execution 워드 시스템 구현"
+        "subject": "Execution 워드 시스템 구현 (생략된 기능)"
     },
     {
         "is_done": false,

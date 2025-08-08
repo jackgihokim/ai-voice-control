@@ -59,7 +59,7 @@ Features/MenuBar/
 **구현된 추가 기능**:
 - UltraSimpleTextField를 사용한 ViewBridge 에러 방지
 - 앱별 커스텀 음성 설정 (selectedVoiceId, speechRate, voiceOutputVolume)
-- Wake words와 Execution words 배열 지원
+- Wake words 배열 지원
 - Debug 모드에서 UserDefaults 리셋 기능
 - 앱 등록 시 설치된 앱 자동 검색
 
@@ -183,19 +183,14 @@ Features/AppControl/
 └── KeyboardSimulator.swift
 ```
 
-#### Step 9: Execution 워드 시스템 구현
-**목표**: Execution 워드 감지 및 자동 전송
-- Execution 워드 감지 로직
+#### Step 9: 자동 전송 시스템 구현
+**목표**: 음성 입력 자동 전송
 - 음성 입력 버퍼 관리
-- Execution 워드 감지 시 Enter 키 전송
-- **테스트**: Execution 워드를 말하면 입력이 전송되는지 확인
+- 자동 전송 기능 (텍스트 길이 기반)
+- **테스트**: 긴 텍스트 입력 시 자동으로 전송되는지 확인
 
-**파일 구조**:
-```
-Features/VoiceRecognition/
-├── ExecutionWordDetector.swift
-└── InputBuffer.swift
-```
+**작업 생략**: 수동으로 ENTER Key 입력 방식 사용
+
 
 ### Phase 4: 터미널 제어 구현 (1주)
 
@@ -306,7 +301,6 @@ Features/Feedback/
 **구현된 기능**:
 - 설치된 앱 자동 검색 (Applications 폴더 스캔)
 - Wake words 배열 지원 (다중 웨이크 워드)
-- Execution words 배열 지원 (기본값: Execute, Run, Go)
 - 앱별 커스텀 음성 설정 (편집 모드에서만 가능)
 - 앱 활성화/비활성화 토글
 - 앱 아이콘 자동 로드

@@ -127,8 +127,7 @@ The app implements an aggressive "Nuclear Option" to prevent ViewBridge errors:
 
 #### Voice Command Architecture
 - **Wake Words**: Arrays of trigger words per app (e.g., ["Claude", "클로드"])
-- **Execution Words**: Arrays of completion words (e.g., ["Execute", "Run", "Go"])
-- **App Configuration**: `AppConfiguration` model handles app-specific settings including wake/execution words
+- **App Configuration**: `AppConfiguration` model handles app-specific settings including wake words
 - **Settings Persistence**: Uses UserDefaults with JSON encoding via `UserSettings.save()`
 - **App-Specific Voice Settings**: Each app can have custom voice settings (selectedVoiceId, speechRate, voiceOutputVolume)
 - **Voice Fallback**: When app-specific settings are nil, global voice settings are used
@@ -151,13 +150,12 @@ To prevent "FactoryInstall Unable to query results, error: 5" errors:
 ### Unit Testing
 - Test voice recognition accuracy
 - Test wake word detection logic
-- Test execution word detection logic
 - Test JSON response parsing
 
 ### Integration Testing
 - Test app activation and control
 - Test terminal command execution
-- Test end-to-end voice command flow with execution words
+- Test end-to-end voice command flow
 
 ### Manual Testing
 - Test in noisy environments (Voice Isolation)
@@ -167,15 +165,14 @@ To prevent "FactoryInstall Unable to query results, error: 5" errors:
 ## Data Models and Persistence
 
 ### Core Models
-- **`AppConfiguration`**: Manages individual app settings with wake/execution words arrays
+- **`AppConfiguration`**: Manages individual app settings with wake words arrays
 - **`UserSettings`**: Global app settings with JSON persistence via UserDefaults
 - **`VoiceLanguage`**: Enum supporting Korean ("ko-KR") and English ("en-US")
 - **`LogLevel`**: Debug levels for development and troubleshooting
 
 ### Settings Management
 - Settings auto-save when modified through the UI
-- Default execution words: ["Execute", "Run", "Go"]
-- Each app can have multiple wake words and inherits default execution words
+- Each app can have multiple wake words
 - App installations are detected via `NSWorkspace.shared.urlForApplication`
 
 ## Important Technical Notes

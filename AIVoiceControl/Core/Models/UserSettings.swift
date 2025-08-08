@@ -24,7 +24,6 @@ struct UserSettings: Codable {
     
     // MARK: - App Management
     var registeredApps: [AppConfiguration] = []
-    var defaultExecutionWords: [String] = ["Execute", "Run", "Go"]
     
     // MARK: - Advanced Settings
     var logLevel: LogLevel = .info

@@ -376,7 +376,7 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
                 recognizedText = transcription
                 #if DEBUG
                 print("📝 Final: \(transcription)")
-                print("🔄 Will restart recognition in 0.2 seconds...")
+                print("🔄 Will restart recognition in 1.0 seconds...")
                 #endif
                 
                 // Clear current transcription to prepare for next
@@ -386,7 +386,7 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
                 
                 // Restart recognition for continuous listening
                 if isListening {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                         if self.isListening {
                             #if DEBUG
                             print("🔄 Restarting recognition now...")

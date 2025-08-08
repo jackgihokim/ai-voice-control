@@ -91,24 +91,7 @@ class MenuBarViewModel: ObservableObject {
             .sink { [weak self] text in
                 self?.transcribedText = text
                 
-                // 웨이크 워드로 활성화된 앱이 있고, 텍스트가 비어있지 않으면 실시간 입력
-                if let app = self?.detectedApp, 
-                   self?.isWaitingForCommand == true,
-                   !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    
-                    #if DEBUG
-                    print("🎯 Real-time text replacement for \(app.name): '\(text)'")
-                    #endif
-                    
-                    // 실시간 텍스트 교체 (동기적으로 즉시 실행)
-                    let success = AppActivator.shared.replaceTextInCurrentApp(text)
-                    
-                    if !success {
-                        #if DEBUG
-                        print("❌ Real-time text replacement failed for \(app.name)")
-                        #endif
-                    }
-                }
+                // 실시간 텍스트 입력은 이제 handleCommandBufferUpdated에서 처리됨
             }
             .store(in: &cancellables)
         
@@ -259,6 +242,13 @@ class MenuBarViewModel: ObservableObject {
             name: .commandTimeout,
             object: nil
         )
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleCommandBufferUpdated(_:)),
+            name: .commandBufferUpdated,
+            object: nil
+        )
     }
     
     @objc private func handleWakeWordDetected(_ notification: Notification) {
@@ -267,12 +257,16 @@ class MenuBarViewModel: ObservableObject {
         #if DEBUG
         print("🎯 Wake word detected for: \(app.name)")
         print("   Bundle ID: \(app.bundleIdentifier)")
+        print("   Text input mode: \(app.textInputMode.displayName)")
         
         // Check current frontmost app before activation
         if let frontApp = NSWorkspace.shared.frontmostApplication {
             print("   Currently active app: \(frontApp.localizedName ?? "Unknown") (\(frontApp.bundleIdentifier ?? "Unknown"))")
         }
         #endif
+        
+        // 새로운 앱이 활성화되므로 증분 텍스트 리셋
+        TextInputAutomator.shared.resetIncrementalText()
         
         // Activate the app when wake word is detected
         let activated = AppActivator.shared.activateApp(app)
@@ -350,5 +344,72 @@ class MenuBarViewModel: ObservableObject {
     
     @objc private func handleCommandTimeout() {
         statusMessage = "Command timeout - Ready"
+        // 타임아웃 시 증분 텍스트 리셋
+        TextInputAutomator.shared.resetIncrementalText()
+    }
+    
+    @objc private func handleCommandBufferUpdated(_ notification: Notification) {
+        guard let app = notification.userInfo?["app"] as? AppConfiguration,
+              let text = notification.userInfo?["text"] as? String else { return }
+        
+        // 앱의 입력 모드에 따라 다른 방식으로 처리
+        switch app.textInputMode {
+        case .incremental:
+            // 증분 방식: 차이점만 추가
+            Task {
+                do {
+                    let cleanText = removeWakeWords(text, from: app)
+                    
+                    #if DEBUG
+                    print("🔄 Real-time streaming (incremental) for \(app.name)")
+                    print("   Original: '\(text)'")
+                    print("   Clean text: '\(cleanText)'")
+                    #endif
+                    
+                    if !cleanText.isEmpty {
+                        try TextInputAutomator.shared.inputTextIncremental(cleanText)
+                        statusMessage = "Streaming to \(app.name)..."
+                    }
+                } catch {
+                    #if DEBUG
+                    print("❌ Incremental streaming failed: \(error)")
+                    #endif
+                }
+            }
+            
+        case .replace:
+            // 교체 방식: 전체 텍스트 교체 (기존 Claude 스타일)
+            let cleanText = removeWakeWords(text, from: app)
+            
+            #if DEBUG
+            print("🔄 Real-time replacement for \(app.name)")
+            print("   Original: '\(text)'")
+            print("   Clean text: '\(cleanText)'")
+            #endif
+            
+            if !cleanText.isEmpty {
+                let success = AppActivator.shared.replaceTextInCurrentApp(cleanText)
+                if !success {
+                    #if DEBUG
+                    print("❌ Text replacement failed for \(app.name)")
+                    #endif
+                }
+            }
+        }
+    }
+    
+    private func removeWakeWords(_ text: String, from app: AppConfiguration) -> String {
+        var cleanText = text
+        
+        // 웨이크 워드들을 제거
+        for wakeWord in app.wakeWords {
+            // 대소문자 구분 없이 제거, 처음 나타나는 것만
+            if let range = cleanText.range(of: wakeWord, options: [.caseInsensitive]) {
+                cleanText.removeSubrange(range)
+                break // 첫 번째 매칭만 제거
+            }
+        }
+        
+        return cleanText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
