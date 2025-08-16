@@ -17,6 +17,10 @@ class TextInputAutomator {
     private var lastInputText: String = ""
     /// 현재 활성화된 앱의 bundle ID
     private var currentAppBundleId: String?
+    /// 마지막 입력 시간 (세션 연속성 감지용)
+    private var lastInputTime: Date = Date()
+    /// 세션 타임아웃 시간 (초)
+    private let sessionTimeout: TimeInterval = 10.0
     
     // MARK: - Types
     
@@ -118,12 +122,27 @@ class TextInputAutomator {
         
         // 현재 활성 앱 확인
         let currentBundleId = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        let currentTime = Date()
         
-        // 앱이 변경되었으면 lastInputText 리셋
-        if currentBundleId != currentAppBundleId {
+        // 앱이 변경되었거나 세션 타임아웃이 발생했으면 lastInputText 리셋
+        let isNewSession = currentBundleId != currentAppBundleId || 
+                          currentTime.timeIntervalSince(lastInputTime) > sessionTimeout
+        
+        if isNewSession {
             lastInputText = ""
             currentAppBundleId = currentBundleId
+            
+            #if DEBUG
+            if currentBundleId != currentAppBundleId {
+                print("🔄 New app detected - resetting text tracking")
+            } else {
+                print("⏰ Session timeout - resetting text tracking")
+            }
+            #endif
         }
+        
+        // 마지막 입력 시간 업데이트
+        lastInputTime = currentTime
         
         #if DEBUG
         print("🔄 Incremental text input")
@@ -187,6 +206,7 @@ class TextInputAutomator {
     func resetIncrementalText() {
         lastInputText = ""
         currentAppBundleId = nil
+        lastInputTime = Date()
         
         #if DEBUG
         print("🔄 Incremental text tracking reset")

@@ -9,6 +9,13 @@ class WakeWordDetector: ObservableObject {
     private var wakeWordTimer: Timer?
     private let commandTimeout: TimeInterval = 5.0
     
+    // 세션 간 텍스트 누적을 위한 버퍼
+    private var accumulatedText = ""
+    private var lastSessionText = ""
+    private var isAccumulatingText = false
+    private var lastTextUpdateTime = Date()
+    private var sessionTimeoutThreshold: TimeInterval = 2.0  // 2초 이상 간격이면 새 세션
+    
     enum DetectionState {
         case idle
         case wakeWordDetected(app: AppConfiguration)
@@ -49,13 +56,50 @@ class WakeWordDetector: ObservableObject {
                 return
             }
             
-            // 웨이크 워드가 아니면 모든 입력을 명령 버퍼에 저장
-            // 실시간 텍스트 입력이 MenuBarViewModel에서 처리됨
-            commandBuffer = text
+            // 연속 입력 모드가 활성화되어 있는 경우 세션 감지 및 누적 처리
+            let userSettings = UserSettings.load()
+            if userSettings.continuousInputMode && isAccumulatingText {
+                let currentTime = Date()
+                let timeSinceLastUpdate = currentTime.timeIntervalSince(lastTextUpdateTime)
+                
+                // 세션 경계 감지 조건:
+                // 1. 텍스트 길이가 크게 줄어든 경우 (새 세션으로 인식 재시작)
+                // 2. 시간 간격이 임계값을 초과한 경우 (긴 침묵 후 재시작)
+                let isLengthBasedNewSession = !text.isEmpty && text.count < Int(Double(lastSessionText.count) * 0.5)  // 50% 이상 줄어든 경우
+                let isTimeBasedNewSession = timeSinceLastUpdate > sessionTimeoutThreshold
+                
+                if (isLengthBasedNewSession || isTimeBasedNewSession) && !lastSessionText.isEmpty {
+                    let previousAccumulated = accumulatedText
+                    accumulatedText += lastSessionText + " "
+                    #if DEBUG
+                    print("📚 New session detected and text accumulated:")
+                    print("   Length-based: \(isLengthBasedNewSession) (current: \(text.count), last: \(lastSessionText.count))")
+                    print("   Time-based: \(isTimeBasedNewSession) (gap: \(String(format: "%.1f", timeSinceLastUpdate))s)")
+                    print("   Previous accumulated: '\(previousAccumulated)'")
+                    print("   Last session: '\(lastSessionText)'")
+                    print("   New accumulated: '\(accumulatedText)'")
+                    #endif
+                }
+                
+                lastTextUpdateTime = currentTime
+            }
+            
+            // 현재 텍스트를 추적
+            lastSessionText = text
+            
+            // 누적된 텍스트와 현재 텍스트를 결합
+            let combinedText = userSettings.continuousInputMode ? (accumulatedText + text) : text
+            commandBuffer = combinedText
             
             #if DEBUG
             if !text.isEmpty {
-                print("📝 Command buffer updated for \(app.name): '\(text)'")
+                print("📝 Command buffer updated for \(app.name):")
+                print("   Current text: '\(text)' (length: \(text.count))")
+                print("   Last session: '\(lastSessionText)' (length: \(lastSessionText.count))")
+                print("   Accumulated: '\(accumulatedText)' (length: \(accumulatedText.count))")
+                print("   Combined: '\(combinedText)' (length: \(combinedText.count))")
+                print("   Continuous mode: \(userSettings.continuousInputMode)")
+                print("   Is accumulating: \(isAccumulatingText)")
             }
             #endif
             
@@ -65,7 +109,7 @@ class WakeWordDetector: ObservableObject {
                 object: nil,
                 userInfo: [
                     "app": app,
-                    "text": text
+                    "text": combinedText
                 ]
             )
             
@@ -186,8 +230,15 @@ class WakeWordDetector: ObservableObject {
         isWaitingForCommand = true  // 웨이크 워드 감지 후 바로 명령 대기 상태로 전환
         commandBuffer = ""
         
+        // 새로운 웨이크 워드 감지 시 텍스트 누적 상태 초기화
+        accumulatedText = ""
+        lastSessionText = ""
+        isAccumulatingText = true
+        lastTextUpdateTime = Date()
+        
         #if DEBUG
         print("🎯 Wake word detected for \(app.name) - ready for real-time text input")
+        print("   Text accumulation started for continuous mode")
         #endif
         
         // 웨이크 워드 감지 알림 전송
@@ -266,6 +317,7 @@ class WakeWordDetector: ObservableObject {
         print("🔄 WakeWordDetector: Resetting state to IDLE")
         print("   Previous state: \(state)")
         print("   Was waiting for command: \(isWaitingForCommand)")
+        print("   Accumulated text: '\(accumulatedText)'")
         #endif
         
         state = .idle
@@ -274,6 +326,12 @@ class WakeWordDetector: ObservableObject {
         commandBuffer = ""
         wakeWordTimer?.invalidate()
         wakeWordTimer = nil
+        
+        // 텍스트 누적 상태 리셋
+        accumulatedText = ""
+        lastSessionText = ""
+        isAccumulatingText = false
+        lastTextUpdateTime = Date()
         
         #if DEBUG
         print("✅ WakeWordDetector: State reset complete - ready for wake words")

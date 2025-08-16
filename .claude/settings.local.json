@@ -43,6 +43,7 @@
       "Bash(pgrep:*)",
       "Bash(console:*)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits"
   }
 }

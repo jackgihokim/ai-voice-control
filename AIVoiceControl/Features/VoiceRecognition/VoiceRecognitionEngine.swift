@@ -374,9 +374,14 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
             
             if result.isFinal {
                 recognizedText = transcription
+                
+                // 설정에서 재시작 지연 시간 가져오기
+                let userSettings = UserSettings.load()
+                let restartDelay = userSettings.recognitionRestartDelay
+                
                 #if DEBUG
                 print("📝 Final: \(transcription)")
-                print("🔄 Will restart recognition in 1.0 seconds...")
+                print("🔄 Will restart recognition in \(restartDelay) seconds...")
                 #endif
                 
                 // Clear current transcription to prepare for next
@@ -384,9 +389,9 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
                     self.currentTranscription = ""
                 }
                 
-                // Restart recognition for continuous listening
+                // Restart recognition for continuous listening with configurable delay
                 if isListening {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + restartDelay) {
                         if self.isListening {
                             #if DEBUG
                             print("🔄 Restarting recognition now...")

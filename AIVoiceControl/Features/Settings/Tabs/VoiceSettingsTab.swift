@@ -83,6 +83,66 @@ struct VoiceSettingsTab: View {
                     }
                 }
                 
+                Section("Voice Recognition Timing") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Recognition Restart Delay")
+                        HStack {
+                            Slider(
+                                value: $viewModel.userSettings.recognitionRestartDelay,
+                                in: 0.5...5.0,
+                                step: 0.5
+                            ) {
+                                Text("Restart Delay")
+                            } minimumValueLabel: {
+                                Text("0.5s")
+                            } maximumValueLabel: {
+                                Text("5.0s")
+                            }
+                            
+                            Text("\(String(format: "%.1f", viewModel.userSettings.recognitionRestartDelay))s")
+                                .frame(width: 40)
+                                .foregroundColor(.secondary)
+                        }
+                        Text("Time to wait after silence before restarting voice recognition")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Silence Tolerance")
+                        HStack {
+                            Slider(
+                                value: $viewModel.userSettings.silenceTolerance,
+                                in: 1.0...10.0,
+                                step: 0.5
+                            ) {
+                                Text("Silence Tolerance")
+                            } minimumValueLabel: {
+                                Text("1.0s")
+                            } maximumValueLabel: {
+                                Text("10.0s")
+                            }
+                            
+                            Text("\(String(format: "%.1f", viewModel.userSettings.silenceTolerance))s")
+                                .frame(width: 40)
+                                .foregroundColor(.secondary)
+                        }
+                        Text("How long to allow silence while speaking before considering speech ended")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle("Continuous Input Mode", isOn: $viewModel.userSettings.continuousInputMode)
+                            .help("Accumulate text across speech sessions instead of replacing it")
+                        
+                        Text("When enabled, text from multiple speech sessions will be combined. When disabled, each new speech session replaces the previous text.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                
                 Section("Text-to-Speech") {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Voice")

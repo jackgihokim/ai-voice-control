@@ -31,6 +31,11 @@ struct UserSettings: Codable {
     var maxRecordingDuration: TimeInterval = 30.0
     var processingTimeout: TimeInterval = 10.0
     
+    // MARK: - Voice Recognition Settings
+    var recognitionRestartDelay: TimeInterval = 1.0    // 음성인식 재시작 지연 시간 (초)
+    var silenceTolerance: TimeInterval = 2.0           // 침묵 허용 시간 (초)
+    var continuousInputMode: Bool = true               // 연속 입력 모드
+    
     // MARK: - Static Methods
     
     static func load() -> UserSettings {
