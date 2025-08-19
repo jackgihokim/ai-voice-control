@@ -9,7 +9,36 @@ class TextInputAutomator {
     
     // MARK: - Singleton
     static let shared = TextInputAutomator()
-    private init() {}
+    private init() {
+        setupNotificationObservers()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    private func setupNotificationObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleVoiceRecognitionReset(_:)),
+            name: .voiceRecognitionReset,
+            object: nil
+        )
+        
+        #if DEBUG
+        print("🔔 TextInputAutomator: Notification observers setup")
+        #endif
+    }
+    
+    @objc private func handleVoiceRecognitionReset(_ notification: Notification) {
+        let reason = notification.userInfo?["reason"] as? String ?? "unknown"
+        
+        #if DEBUG
+        print("🔄 TextInputAutomator: Received reset notification (reason: \(reason))")
+        #endif
+        
+        resetIncrementalText()
+    }
     
     // MARK: - Properties
     

@@ -13,6 +13,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var popover: NSPopover?
     private var menuBarViewModel: MenuBarViewModel?
     private var settingsWindowController: SettingsWindowController?
+    private let stateManager = VoiceControlStateManager.shared
+    private var floatingTimerWindow: FloatingTimerWindow?
+    private var keyboardMonitor = KeyboardEventMonitor()
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // DEBUG: Reset UserDefaults if needed (comment out in production)
@@ -49,6 +52,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Create the view model
         menuBarViewModel = MenuBarViewModel()
         
+        // Set voice engine reference in state manager
+        if let voiceEngine = menuBarViewModel?.voiceRecognitionEngine {
+            stateManager.setVoiceEngine(voiceEngine)
+        }
+        
         // Create the popover
         popover = NSPopover()
         popover?.contentSize = NSSize(width: 300, height: 400)
@@ -83,6 +91,40 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             name: NSApplication.willResignActiveNotification,
             object: nil
         )
+        
+        // Setup floating timer window
+        setupFloatingTimer()
+        
+        // Start keyboard monitoring for Enter key reset
+        keyboardMonitor.startMonitoring()
+        
+        // Auto-start voice recognition if enabled
+        Task { @MainActor in
+            let settings = UserSettings.load()
+            if settings.autoStartListening == true {
+                #if DEBUG
+                print("🚀 Auto-starting voice recognition...")
+                #endif
+                
+                // Wait a moment for all components to be fully initialized
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+                
+                do {
+                    try await stateManager.startListening()
+                    #if DEBUG
+                    print("✅ Auto-start completed successfully")
+                    #endif
+                } catch {
+                    #if DEBUG
+                    print("❌ Auto-start failed: \(error)")
+                    #endif
+                }
+            } else {
+                #if DEBUG
+                print("⏸️ Auto-start disabled in settings")
+                #endif
+            }
+        }
     }
     
     @objc private func togglePopover() {
@@ -226,8 +268,49 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationWillTerminate(_ notification: Notification) {
+        // Stop keyboard monitoring
+        keyboardMonitor.stopMonitoring()
+        
         // Clear any restoration data on app termination
         UserDefaults.standard.removeObject(forKey: "NSQuitAlwaysKeepsWindows")
         UserDefaults.standard.synchronize()
+    }
+    
+    // MARK: - Floating Timer Setup
+    
+    private func setupFloatingTimer() {
+        let settings = UserSettings.load()
+        
+        if settings.showFloatingTimer == true {
+            floatingTimerWindow = FloatingTimerWindow()
+            
+            // Setup state manager observation to show/hide timer
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(handleVoiceControlStateChanged(_:)),
+                name: .voiceControlStateChanged,
+                object: nil
+            )
+            
+            #if DEBUG
+            print("🪟 Floating timer setup completed")
+            #endif
+        } else {
+            #if DEBUG
+            print("🪟 Floating timer disabled in settings")
+            #endif
+        }
+    }
+    
+    @objc private func handleVoiceControlStateChanged(_ notification: Notification) {
+        guard let isListening = notification.userInfo?["isListening"] as? Bool else { return }
+        
+        DispatchQueue.main.async { [weak self] in
+            if isListening {
+                self?.floatingTimerWindow?.showIfNeeded()
+            } else {
+                self?.floatingTimerWindow?.hideIfNeeded()
+            }
+        }
     }
 }

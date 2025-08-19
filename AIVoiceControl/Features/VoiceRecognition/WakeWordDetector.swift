@@ -7,14 +7,17 @@ class WakeWordDetector: ObservableObject {
     @Published var commandBuffer = ""
     
     private var wakeWordTimer: Timer?
-    private let commandTimeout: TimeInterval = 5.0
+    private var commandTimeout: TimeInterval {
+        // 사용자 설정의 silenceTolerance 값을 사용
+        return UserSettings.load().silenceTolerance
+    }
     
     // 세션 간 텍스트 누적을 위한 버퍼
     private var accumulatedText = ""
     private var lastSessionText = ""
     private var isAccumulatingText = false
     private var lastTextUpdateTime = Date()
-    private var sessionTimeoutThreshold: TimeInterval = 2.0  // 2초 이상 간격이면 새 세션
+    private var sessionTimeoutThreshold: TimeInterval = 3.0  // 3초 이상 간격이면 새 세션 (명령 간 자연스러운 간격 허용)
     
     enum DetectionState {
         case idle
@@ -24,6 +27,47 @@ class WakeWordDetector: ObservableObject {
     }
     
     @Published var state: DetectionState = .idle
+    
+    init() {
+        setupNotificationObservers()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    private func setupNotificationObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleVoiceRecognitionReset(_:)),
+            name: .voiceRecognitionReset,
+            object: nil
+        )
+        
+        #if DEBUG
+        print("🔔 WakeWordDetector: Notification observers setup")
+        #endif
+    }
+    
+    @objc private func handleVoiceRecognitionReset(_ notification: Notification) {
+        let reason = notification.userInfo?["reason"] as? String ?? "unknown"
+        
+        #if DEBUG
+        print("🔄 WakeWordDetector: Received reset notification (reason: \(reason))")
+        print("   Current state: \(state)")
+        #endif
+        
+        // Don't reset if we're in the middle of processing a command
+        switch state {
+        case .wakeWordDetected, .waitingForCommand:
+            #if DEBUG
+            print("⚠️ Ignoring reset - currently processing wake word command")
+            #endif
+            return
+        default:
+            resetState()
+        }
+    }
     
     func processTranscription(_ text: String, apps: [AppConfiguration]) {
         let lowercasedText = text.lowercased()
@@ -90,6 +134,15 @@ class WakeWordDetector: ObservableObject {
             // 누적된 텍스트와 현재 텍스트를 결합
             let combinedText = userSettings.continuousInputMode ? (accumulatedText + text) : text
             commandBuffer = combinedText
+            
+            // 음성 입력이 있으면 명령 타이머를 연장 (사용자가 계속 말하고 있음을 인지)
+            if !text.isEmpty {
+                startCommandTimer()  // 타이머 재시작으로 시간 연장
+                
+                #if DEBUG
+                print("⏱️ Command timer extended due to voice input")
+                #endif
+            }
             
             #if DEBUG
             if !text.isEmpty {
@@ -241,6 +294,13 @@ class WakeWordDetector: ObservableObject {
         print("   Text accumulation started for continuous mode")
         #endif
         
+        // 명령 타이머 시작 - 일정 시간 후 자동으로 상태 리셋
+        startCommandTimer()
+        
+        #if DEBUG
+        print("⏱️ Command timer started (\(commandTimeout) seconds)")
+        #endif
+        
         // 웨이크 워드 감지 알림 전송
         NotificationCenter.default.post(
             name: .wakeWordDetected,
@@ -301,15 +361,26 @@ class WakeWordDetector: ObservableObject {
     
     private func handleTimeout() {
         #if DEBUG
-        print("⏱️ Command timeout - resetting state")
+        print("⏱️ Command timeout - performing complete reset")
+        print("   Current state: \(state)")
+        print("   Accumulated text: '\(accumulatedText)'")
+        print("   Last session text: '\(lastSessionText)'")
         #endif
         
+        // Post timeout notification first
         NotificationCenter.default.post(
             name: .commandTimeout,
-            object: nil
+            object: nil,
+            userInfo: ["reason": "silenceTimeout"]
         )
         
+        // Reset local state first
         resetState()
+        
+        // Trigger complete system reset through VoiceControlStateManager
+        Task {
+            await VoiceControlStateManager.shared.completeReset()
+        }
     }
     
     func resetState() {

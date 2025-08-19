@@ -33,8 +33,16 @@ struct UserSettings: Codable {
     
     // MARK: - Voice Recognition Settings
     var recognitionRestartDelay: TimeInterval = 1.0    // 음성인식 재시작 지연 시간 (초)
-    var silenceTolerance: TimeInterval = 2.0           // 침묵 허용 시간 (초)
+    var silenceTolerance: TimeInterval = 10.0          // 침묵 허용 시간 (초) - 웨이크워드 후 명령 대기시간
     var continuousInputMode: Bool = true               // 연속 입력 모드
+    
+    // MARK: - Voice Control Automation
+    var autoStartListening: Bool? = true               // 앱 시작 시 자동으로 음성인식 시작
+    var showFloatingTimer: Bool? = true                // 플로팅 타이머 윈도우 표시
+    var resetOnWakeWord: Bool? = true                  // 웨이크워드 감지 시 타이머 리셋
+    var resetOnEnterKey: Bool? = true                  // Enter 키 입력 시 타이머 리셋
+    var floatingTimerPosition: CGPoint? = CGPoint(x: 100, y: 100)  // 플로팅 타이머 위치
+    var floatingTimerOpacity: Double? = 1.0            // 플로팅 타이머 투명도
     
     // MARK: - Static Methods
     

@@ -113,21 +113,21 @@ struct VoiceSettingsTab: View {
                         HStack {
                             Slider(
                                 value: $viewModel.userSettings.silenceTolerance,
-                                in: 1.0...10.0,
-                                step: 0.5
+                                in: 1.0...15.0,
+                                step: 1.0
                             ) {
                                 Text("Silence Tolerance")
                             } minimumValueLabel: {
-                                Text("1.0s")
+                                Text("1s")
                             } maximumValueLabel: {
-                                Text("10.0s")
+                                Text("15s")
                             }
                             
                             Text("\(String(format: "%.1f", viewModel.userSettings.silenceTolerance))s")
                                 .frame(width: 40)
                                 .foregroundColor(.secondary)
                         }
-                        Text("How long to allow silence while speaking before considering speech ended")
+                        Text("웨이크워드 감지 후 명령 입력을 기다리는 시간 (침묵 허용시간)")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }

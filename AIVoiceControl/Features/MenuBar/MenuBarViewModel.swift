@@ -21,16 +21,24 @@ class MenuBarViewModel: ObservableObject {
     @Published var currentLanguage: VoiceLanguage = .korean
     @Published var isWaitingForCommand: Bool = false
     @Published var detectedApp: AppConfiguration?
+    @Published var remainingTime: Int = 58
     
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
     private let permissionManager = PermissionManager.shared
     private var voiceEngine: VoiceRecognitionEngine?
+    private let stateManager = VoiceControlStateManager.shared
+    
+    // MARK: - Public Properties for StateManager Integration
+    var voiceRecognitionEngine: VoiceRecognitionEngine? {
+        return voiceEngine
+    }
     
     // MARK: - Initialization
     init() {
         setupVoiceEngine()
         setupBindings()
+        setupStateManagerBindings()
         setupNotificationObservers()
         checkPermissions()
     }
@@ -43,12 +51,12 @@ class MenuBarViewModel: ObservableObject {
             return
         }
         
-        isListening.toggle()
-        
-        if isListening {
-            startListening()
-        } else {
-            stopListening()
+        Task {
+            do {
+                try await stateManager.toggleListening()
+            } catch {
+                statusMessage = "Failed to toggle: \(error.localizedDescription)"
+            }
         }
     }
     
@@ -167,21 +175,15 @@ class MenuBarViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
-    private func startListening() {
-        Task {
-            do {
-                try await voiceEngine?.startListening()
-            } catch {
-                statusMessage = "Failed to start: \(error.localizedDescription)"
-                isListening = false
-                isProcessing = false
-            }
-        }
+    private func setupStateManagerBindings() {
+        // Subscribe to StateManager's published properties
+        stateManager.$isListening
+            .assign(to: &$isListening)
+        
+        stateManager.$remainingTime
+            .assign(to: &$remainingTime)
     }
     
-    private func stopListening() {
-        voiceEngine?.stopListening()
-    }
     
     private func updateStatusMessage(listening: Bool) {
         if listening {
@@ -249,6 +251,13 @@ class MenuBarViewModel: ObservableObject {
             name: .commandBufferUpdated,
             object: nil
         )
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleVoiceRecognitionReset(_:)),
+            name: .voiceRecognitionReset,
+            object: nil
+        )
     }
     
     @objc private func handleWakeWordDetected(_ notification: Notification) {
@@ -258,6 +267,10 @@ class MenuBarViewModel: ObservableObject {
         print("🎯 Wake word detected for: \(app.name)")
         print("   Bundle ID: \(app.bundleIdentifier)")
         print("   Text input mode: \(app.textInputMode.displayName)")
+        
+        // Check Accessibility permission
+        let isAccessibilityEnabled = AXIsProcessTrusted()
+        print("   Accessibility permission: \(isAccessibilityEnabled)")
         
         // Check current frontmost app before activation
         if let frontApp = NSWorkspace.shared.frontmostApplication {
@@ -342,15 +355,46 @@ class MenuBarViewModel: ObservableObject {
         }
     }
     
-    @objc private func handleCommandTimeout() {
-        statusMessage = "Command timeout - Ready"
-        // 타임아웃 시 증분 텍스트 리셋
-        TextInputAutomator.shared.resetIncrementalText()
+    @objc private func handleCommandTimeout(_ notification: Notification) {
+        let reason = notification.userInfo?["reason"] as? String ?? "unknown"
+        
+        #if DEBUG
+        print("⏰ MenuBarViewModel: Command timeout received (reason: \(reason))")
+        #endif
+        
+        if reason == "silenceTimeout" {
+            statusMessage = "침묵 허용시간 초과 - 전체 리셋 중..."
+            
+            #if DEBUG
+            print("🔄 Complete reset initiated due to silence timeout")
+            #endif
+        } else {
+            statusMessage = "Command timeout - Ready"
+            // 일반 타임아웃의 경우에만 증분 텍스트 리셋
+            TextInputAutomator.shared.resetIncrementalText()
+        }
+        
+        // 상태 메시지를 잠시 후 업데이트
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            self.statusMessage = "Ready - Listening for wake words"
+        }
     }
     
     @objc private func handleCommandBufferUpdated(_ notification: Notification) {
         guard let app = notification.userInfo?["app"] as? AppConfiguration,
-              let text = notification.userInfo?["text"] as? String else { return }
+              let text = notification.userInfo?["text"] as? String else { 
+            #if DEBUG
+            print("❌ handleCommandBufferUpdated: Missing app or text in notification")
+            #endif
+            return 
+        }
+        
+        #if DEBUG
+        print("📝 handleCommandBufferUpdated called:")
+        print("   App: \(app.name)")
+        print("   Text: '\(text)'")
+        print("   Text input mode: \(app.textInputMode)")
+        #endif
         
         // 앱의 입력 모드에 따라 다른 방식으로 처리
         switch app.textInputMode {
@@ -367,13 +411,28 @@ class MenuBarViewModel: ObservableObject {
                     #endif
                     
                     if !cleanText.isEmpty {
+                        #if DEBUG
+                        print("🎯 Attempting incremental text input for \(app.name)")
+                        print("   Clean text to input: '\(cleanText)'")
+                        #endif
+                        
                         try TextInputAutomator.shared.inputTextIncremental(cleanText)
                         statusMessage = "Streaming to \(app.name)..."
+                        
+                        #if DEBUG
+                        print("✅ Incremental text input successful for \(app.name)")
+                        #endif
+                    } else {
+                        #if DEBUG
+                        print("⚠️ Clean text is empty, skipping incremental input for \(app.name)")
+                        #endif
                     }
                 } catch {
                     #if DEBUG
                     print("❌ Incremental streaming failed: \(error)")
+                    print("   Error details: \(error.localizedDescription)")
                     #endif
+                    statusMessage = "Incremental input failed for \(app.name): \(error.localizedDescription)"
                 }
             }
             
@@ -388,14 +447,49 @@ class MenuBarViewModel: ObservableObject {
             #endif
             
             if !cleanText.isEmpty {
+                #if DEBUG
+                print("🎯 Attempting text replacement for \(app.name)")
+                print("   Clean text to input: '\(cleanText)'")
+                #endif
+                
                 let success = AppActivator.shared.replaceTextInCurrentApp(cleanText)
-                if !success {
-                    #if DEBUG
+                
+                #if DEBUG
+                if success {
+                    print("✅ Text replacement successful for \(app.name)")
+                } else {
                     print("❌ Text replacement failed for \(app.name)")
-                    #endif
                 }
+                #endif
+                
+                if !success {
+                    statusMessage = "Text input failed for \(app.name)"
+                }
+            } else {
+                #if DEBUG
+                print("⚠️ Clean text is empty, skipping input for \(app.name)")
+                #endif
             }
         }
+    }
+    
+    @objc private func handleVoiceRecognitionReset(_ notification: Notification) {
+        let reason = notification.userInfo?["reason"] as? String ?? "unknown"
+        
+        #if DEBUG
+        print("🔄 MenuBarViewModel: Received reset notification (reason: \(reason))")
+        print("   Clearing transcribedText: '\(transcribedText)'")
+        #endif
+        
+        // Clear all transcribed text
+        transcribedText = ""
+        
+        // Reset status message
+        statusMessage = "Ready"
+        
+        #if DEBUG
+        print("✅ MenuBarViewModel: Reset completed")
+        #endif
     }
     
     private func removeWakeWords(_ text: String, from app: AppConfiguration) -> String {

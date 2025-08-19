@@ -168,6 +168,11 @@ struct MenuBarView: View {
             .buttonStyle(.plain)
             .disabled(viewModel.isProcessing && !viewModel.isListening || !viewModel.hasRequiredPermissions)
             
+            // Timer display when listening
+            if viewModel.isListening {
+                timerDisplay
+            }
+            
             // Audio level indicator
             if viewModel.isListening {
                 audioLevelIndicator
@@ -238,6 +243,40 @@ struct MenuBarView: View {
         if viewModel.isListening {
             return .red
         } else if viewModel.isProcessing {
+            return .orange
+        } else {
+            return .green
+        }
+    }
+    
+    // MARK: - Timer Display
+    private var timerDisplay: some View {
+        VStack(spacing: 4) {
+            HStack {
+                Image(systemName: "timer")
+                    .foregroundColor(timerColor)
+                
+                Text("Auto-restart in \(viewModel.remainingTime)s")
+                    .font(.caption)
+                    .foregroundColor(timerColor)
+                
+                Spacer()
+            }
+            
+            ProgressView(value: Double(viewModel.remainingTime), total: 58)
+                .progressViewStyle(LinearProgressViewStyle())
+                .tint(timerColor)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(6)
+    }
+    
+    private var timerColor: Color {
+        if viewModel.remainingTime <= 10 {
+            return .red
+        } else if viewModel.remainingTime <= 30 {
             return .orange
         } else {
             return .green
