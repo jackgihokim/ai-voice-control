@@ -469,8 +469,22 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         recognitionState = .stopping
         cleanupRecognitionTask()
         
-        // Wait briefly before restart
-        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
+        // 59초 타이머 만료 시 텍스트 필드도 리셋하도록 알림 전송
+        #if DEBUG
+        print("🔔 Posting voiceRecognitionReset notification with clearTextField: true")
+        #endif
+        NotificationCenter.default.post(
+            name: .voiceRecognitionReset,
+            object: nil,
+            userInfo: ["reason": "timerExpired", "clearTextField": true]
+        )
+        
+        // 텍스트 필드 클리어 작업이 완료될 때까지 대기
+        // (UI 업데이트: 0.1초 + 선택: 0.1초 + Backspace: 0.05초 + 여유: 0.15초 = 총 0.4초)
+        #if DEBUG
+        print("⏳ Waiting 0.4 seconds for text field clear to complete...")
+        #endif
+        try? await Task.sleep(nanoseconds: 400_000_000) // 0.4초
         
         // Restart if still supposed to be listening
         if isListening {

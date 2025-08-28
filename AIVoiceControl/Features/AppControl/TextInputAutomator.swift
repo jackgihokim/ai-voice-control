@@ -32,12 +32,112 @@ class TextInputAutomator {
     
     @objc private func handleVoiceRecognitionReset(_ notification: Notification) {
         let reason = notification.userInfo?["reason"] as? String ?? "unknown"
+        let clearTextField = notification.userInfo?["clearTextField"] as? Bool ?? false
         
         #if DEBUG
-        print("🔄 TextInputAutomator: Received reset notification (reason: \(reason))")
+        print("🔄 TextInputAutomator: Received reset notification (reason: \(reason), clearTextField: \(clearTextField))")
         #endif
         
         resetIncrementalText()
+        
+        // 타이머 만료 시 텍스트 필드 클리어
+        if clearTextField {
+            Task {
+                await clearActiveAppTextField()
+            }
+        }
+    }
+    
+    /// 활성 앱의 텍스트 필드를 클리어
+    private func clearActiveAppTextField() async {
+        #if DEBUG
+        print("🧹 Clearing active app's text field")
+        #endif
+        
+        guard let activeApp = NSWorkspace.shared.frontmostApplication else {
+            #if DEBUG
+            print("⚠️ No active app found")
+            #endif
+            return
+        }
+        
+        // UI 업데이트 방지 플래그 설정
+        VoiceControlStateManager.shared.isPerformingTextFieldOperation = true
+        
+        // 텍스트 필드 클리어 동안 카운트다운 타이머 일시 중지
+        await VoiceControlStateManager.shared.stopCountdownTimer()
+        
+        // UI 업데이트가 완료되도록 잠시 대기
+        #if DEBUG
+        print("⏳ Waiting for UI updates to complete...")
+        #endif
+        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1초 대기
+        
+        do {
+            // 포커스된 텍스트 필드를 찾아서 직접 빈 텍스트로 설정
+            if let focusedElement = getFocusedTextElement() {
+                #if DEBUG
+                print("🔍 Found focused text element - attempting direct clear")
+                #endif
+                
+                // 빈 텍스트로 직접 설정
+                let clearResult = AXUIElementSetAttributeValue(
+                    focusedElement,
+                    kAXValueAttribute as CFString,
+                    "" as CFTypeRef
+                )
+                
+                if clearResult == .success {
+                    #if DEBUG
+                    print("✅ Text field cleared directly: \(activeApp.localizedName ?? "Unknown")")
+                    #endif
+                    return
+                } else {
+                    #if DEBUG
+                    print("⚠️ Direct clear failed, trying keyboard method")
+                    #endif
+                }
+            }
+            
+            // 직접 설정이 실패하면 키보드 방식으로 시도
+            #if DEBUG
+            print("⌨️ Trying keyboard method to clear text field")
+            #endif
+            
+            // Select all text (Command+A)
+            try KeyboardSimulator.shared.selectAll()
+            
+            #if DEBUG
+            print("🔍 Text should be highlighted now - waiting 0.1 seconds...")
+            #endif
+            
+            // 텍스트 선택 완료 대기
+            try await Task.sleep(nanoseconds: 100_000_000) // 0.1초 대기
+            
+            #if DEBUG
+            print("⌨️ Now attempting to delete selected text...")
+            #endif
+            
+            // 백스페이스 한 번으로 선택된 텍스트 삭제
+            try KeyboardSimulator.shared.sendBackspace()
+            
+            #if DEBUG
+            print("✅ Text field cleared using space replacement: \(activeApp.localizedName ?? "Unknown")")
+            #endif
+        } catch {
+            #if DEBUG
+            print("❌ Failed to clear text field: \(error)")
+            #endif
+        }
+        
+        // UI 업데이트 방지 플래그 해제
+        VoiceControlStateManager.shared.isPerformingTextFieldOperation = false
+        
+        // remainingTime 업데이트
+        VoiceControlStateManager.shared.remainingTime = VoiceControlStateManager.shared.maxTime
+        
+        // 텍스트 필드 클리어 완료 후 타이머 재시작
+        await VoiceControlStateManager.shared.startCountdownTimer()
     }
     
     // MARK: - Properties

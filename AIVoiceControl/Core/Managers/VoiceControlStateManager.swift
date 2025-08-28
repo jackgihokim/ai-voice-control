@@ -30,6 +30,9 @@ class VoiceControlStateManager: ObservableObject {
     @Published var showFloatingTimer = true
     @Published var isTransitioning = false
     
+    // Flag to prevent UI updates during text field operations
+    var isPerformingTextFieldOperation = false
+    
     // MARK: - Private Properties
     private var voiceEngine: VoiceRecognitionEngine?
     private var countdownTimer: Timer?
@@ -152,7 +155,8 @@ class VoiceControlStateManager: ObservableObject {
         print("🔄 StateManager: Refreshing voice recognition")
         #endif
         
-        await completeReset(clearTextField: false)
+        // 음성 인식 리프레시 시 텍스트 필드도 클리어
+        await completeReset(clearTextField: true)
     }
     
     /// Reset only the timer without affecting voice recognition state
@@ -237,13 +241,25 @@ class VoiceControlStateManager: ObservableObject {
         }
         
         do {
-            // Select all text (Command+A) and delete it
+            // Select all text (Command+A)
             try KeyboardSimulator.shared.selectAll()
+            
+            #if DEBUG
+            print("🔍 Text should be highlighted now - waiting 0.1 seconds...")
+            #endif
+            
+            // 텍스트 선택 완료 대기
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1초 대기
+            
+            #if DEBUG
+            print("⌨️ Now attempting to delete selected text...")
+            #endif
+            
+            // 백스페이스 한 번으로 선택된 텍스트 삭제
             try KeyboardSimulator.shared.sendBackspace()
             
             #if DEBUG
-            print("✅ Active app text field cleared: \(activeApp.localizedName ?? "Unknown")")
+            print("✅ Active app text field cleared using space replacement: \(activeApp.localizedName ?? "Unknown")")
             #endif
         } catch {
             #if DEBUG
@@ -254,7 +270,7 @@ class VoiceControlStateManager: ObservableObject {
     
     // MARK: - Private Methods
     
-    private func startCountdownTimer() {
+    func startCountdownTimer() {
         stopCountdownTimer()
         remainingTime = maxTime
         
@@ -284,13 +300,17 @@ class VoiceControlStateManager: ObservableObject {
         }
     }
     
-    private func stopCountdownTimer() {
+    func stopCountdownTimer() {
         countdownTimer?.invalidate()
         countdownTimer = nil
-        remainingTime = maxTime
+        
+        // UI 업데이트를 방지하는 플래그가 설정되어 있지 않을 때만 업데이트
+        if !isPerformingTextFieldOperation {
+            remainingTime = maxTime
+        }
         
         #if DEBUG
-        print("⏹️ Countdown timer stopped")
+        print("⏹️ Countdown timer stopped (UI update: \(!isPerformingTextFieldOperation))")
         #endif
     }
     
