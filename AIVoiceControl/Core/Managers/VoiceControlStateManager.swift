@@ -25,7 +25,7 @@ class VoiceControlStateManager: ObservableObject {
     
     // MARK: - Published State
     @Published var isListening = false
-    @Published var remainingTime = 58
+    @Published var remainingTime = 59
     @Published var autoStartEnabled = true
     @Published var showFloatingTimer = true
     @Published var isTransitioning = false
@@ -36,7 +36,7 @@ class VoiceControlStateManager: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Constants
-    let maxTime = 58
+    let maxTime = 59
     let warningThreshold = 10
     
     // MARK: - Initialization
@@ -146,6 +146,15 @@ class VoiceControlStateManager: ObservableObject {
         resetTimerOnly()
     }
     
+    /// Refresh listening by doing a complete reset
+    func refreshListening() async {
+        #if DEBUG
+        print("🔄 StateManager: Refreshing voice recognition")
+        #endif
+        
+        await completeReset(clearTextField: false)
+    }
+    
     /// Reset only the timer without affecting voice recognition state
     func resetTimerOnly() {
         #if DEBUG
@@ -195,6 +204,9 @@ class VoiceControlStateManager: ObservableObject {
         #if DEBUG
         print("🧹 Clearing all text buffers and clipboard")
         #endif
+        
+        // WakeWordDetector 상태는 유지 (웨이크워드 감지 후 명령 대기 상태 유지)
+        // voiceEngine?.resetWakeWordState() <- 제거: 명령 입력 상태를 유지해야 함
         
         // Reset TextInputAutomator
         TextInputAutomator.shared.resetIncrementalText()
@@ -329,12 +341,13 @@ class VoiceControlStateManager: ObservableObject {
     @objc private func handleWakeWordDetected(_ notification: Notification) {
         #if DEBUG
         if let app = notification.userInfo?["app"] as? AppConfiguration {
-            print("🎯 Wake word detected for \(app.name) - resetting timer")
+            print("🎯 Wake word detected for \(app.name) - performing complete reset")
         }
         #endif
         
         Task {
-            await resetTimer()
+            // 웨이크워드 감지 시 음성인식 완전 리셋 (텍스트 필드는 유지)
+            await completeReset(clearTextField: false)
         }
     }
     

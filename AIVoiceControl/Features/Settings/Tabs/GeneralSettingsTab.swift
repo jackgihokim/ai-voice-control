@@ -85,53 +85,68 @@ struct GeneralSettingsTab: View {
                     }
                 }
                 
-                Section("Voice Recognition Timing") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Recognition Restart Delay")
-                        HStack {
-                            Slider(
-                                value: $viewModel.userSettings.recognitionRestartDelay,
-                                in: 0.1...3.0,
-                                step: 0.1
-                            ) {
-                                Text("Delay")
-                            } minimumValueLabel: {
-                                Text("0.1s")
-                            } maximumValueLabel: {
-                                Text("3s")
-                            }
-                            
-                            Text(String(format: "%.1fs", viewModel.userSettings.recognitionRestartDelay))
-                                .frame(width: 40)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .help("Delay between voice recognition sessions")
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Silence Tolerance")
-                        HStack {
-                            Slider(
-                                value: $viewModel.userSettings.silenceTolerance,
-                                in: 1.0...15.0,
-                                step: 1.0
-                            ) {
-                                Text("Tolerance")
-                            } minimumValueLabel: {
-                                Text("1s")
-                            } maximumValueLabel: {
-                                Text("15s")
-                            }
-                            
-                            Text(String(format: "%.1fs", viewModel.userSettings.silenceTolerance))
-                                .frame(width: 40)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .help("웨이크워드 감지 후 명령 입력을 기다리는 시간 (침묵 허용시간)")
-                    
+                Section("Voice Recognition") {
                     Toggle("Continuous input mode", isOn: $viewModel.userSettings.continuousInputMode)
                         .help("Enable continuous speech recognition across pauses")
+                    
+                    Divider()
+                    
+                    VStack(alignment: .leading, spacing: 12) {
+                        Toggle("자동 구두점 추가", isOn: $viewModel.userSettings.autoAddPunctuation)
+                            .help("음성 인식 결과에 자동으로 마침표, 물음표 등을 추가합니다")
+                        
+                        if viewModel.userSettings.autoAddPunctuation {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("구두점 추가 스타일")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                
+                                Picker("", selection: $viewModel.userSettings.punctuationStyle) {
+                                    ForEach(PunctuationStyle.allCases, id: \.self) { style in
+                                        VStack(alignment: .leading) {
+                                            Text(style.displayName)
+                                                .font(.body)
+                                            Text(style.description)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .tag(style)
+                                    }
+                                }
+                                .pickerStyle(RadioGroupPickerStyle())
+                                .padding(.leading, 20)
+                                
+                                // 예시 표시
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("예시:")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    
+                                    let examples = [
+                                        ("오늘 날씨 어때요", "오늘 날씨 어때요?"),
+                                        ("회의 일정 확인해줘", "회의 일정 확인해줘."),
+                                        ("정말 좋네요", "정말 좋네요!")
+                                    ]
+                                    
+                                    ForEach(examples, id: \.0) { input, output in
+                                        HStack(spacing: 8) {
+                                            Text(input)
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                            Text("→")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                            Text(output)
+                                                .font(.caption)
+                                                .fontWeight(.medium)
+                                        }
+                                    }
+                                }
+                                .padding(.top, 8)
+                                .padding(.leading, 20)
+                            }
+                        }
+                    }
                 }
                 
                 Section("Advanced") {
@@ -169,26 +184,6 @@ struct GeneralSettingsTab: View {
                         }
                     }
                     
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Processing Timeout")
-                        HStack {
-                            Slider(
-                                value: $viewModel.userSettings.processingTimeout,
-                                in: 5...30,
-                                step: 1
-                            ) {
-                                Text("Timeout")
-                            } minimumValueLabel: {
-                                Text("5s")
-                            } maximumValueLabel: {
-                                Text("30s")
-                            }
-                            
-                            Text("\(Int(viewModel.userSettings.processingTimeout))s")
-                                .frame(width: 30)
-                                .foregroundColor(.secondary)
-                        }
-                    }
                 }
             }
             .formStyle(.grouped)

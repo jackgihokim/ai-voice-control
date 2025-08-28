@@ -21,7 +21,7 @@ class MenuBarViewModel: ObservableObject {
     @Published var currentLanguage: VoiceLanguage = .korean
     @Published var isWaitingForCommand: Bool = false
     @Published var detectedApp: AppConfiguration?
-    @Published var remainingTime: Int = 58
+    @Published var remainingTime: Int = 59
     
     // MARK: - Private Properties
     private var cancellables = Set<AnyCancellable>()
@@ -44,6 +44,10 @@ class MenuBarViewModel: ObservableObject {
     }
     
     // MARK: - Public Methods
+    func refreshListening() async {
+        await stateManager.refreshListening()
+    }
+    
     func toggleListening() {
         // Check permissions before starting
         if !hasRequiredPermissions {
@@ -240,13 +244,6 @@ class MenuBarViewModel: ObservableObject {
         
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(handleCommandTimeout),
-            name: .commandTimeout,
-            object: nil
-        )
-        
-        NotificationCenter.default.addObserver(
-            self,
             selector: #selector(handleCommandBufferUpdated(_:)),
             name: .commandBufferUpdated,
             object: nil
@@ -352,31 +349,6 @@ class MenuBarViewModel: ObservableObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                 self.statusMessage = "Ready - Listening for next wake word"
             }
-        }
-    }
-    
-    @objc private func handleCommandTimeout(_ notification: Notification) {
-        let reason = notification.userInfo?["reason"] as? String ?? "unknown"
-        
-        #if DEBUG
-        print("⏰ MenuBarViewModel: Command timeout received (reason: \(reason))")
-        #endif
-        
-        if reason == "silenceTimeout" {
-            statusMessage = "침묵 허용시간 초과 - 전체 리셋 중..."
-            
-            #if DEBUG
-            print("🔄 Complete reset initiated due to silence timeout")
-            #endif
-        } else {
-            statusMessage = "Command timeout - Ready"
-            // 일반 타임아웃의 경우에만 증분 텍스트 리셋
-            TextInputAutomator.shared.resetIncrementalText()
-        }
-        
-        // 상태 메시지를 잠시 후 업데이트
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            self.statusMessage = "Ready - Listening for wake words"
         }
     }
     

@@ -29,12 +29,12 @@ struct UserSettings: Codable {
     var logLevel: LogLevel = .info
     var enableDebugMode: Bool = false
     var maxRecordingDuration: TimeInterval = 30.0
-    var processingTimeout: TimeInterval = 10.0
     
     // MARK: - Voice Recognition Settings
-    var recognitionRestartDelay: TimeInterval = 1.0    // 음성인식 재시작 지연 시간 (초)
-    var silenceTolerance: TimeInterval = 10.0          // 침묵 허용 시간 (초) - 웨이크워드 후 명령 대기시간
+    var recognitionRestartDelay: TimeInterval = 0.5    // 음성인식 재시작 지연 시간 (초) - deprecated
     var continuousInputMode: Bool = true               // 연속 입력 모드
+    var autoAddPunctuation: Bool = false               // 자동 구두점 추가
+    var punctuationStyle: PunctuationStyle = .conservative  // 구두점 추가 스타일
     
     // MARK: - Voice Control Automation
     var autoStartListening: Bool? = true               // 앱 시작 시 자동으로 음성인식 시작
@@ -89,6 +89,28 @@ enum LogLevel: String, CaseIterable, Codable {
         case .info: return "Info"
         case .warning: return "Warning"
         case .error: return "Error"
+        }
+    }
+}
+
+enum PunctuationStyle: String, CaseIterable, Codable {
+    case conservative = "conservative"
+    case aggressive = "aggressive"
+    case none = "none"
+    
+    var displayName: String {
+        switch self {
+        case .conservative: return "확실한 경우만"
+        case .aggressive: return "적극적으로"
+        case .none: return "사용 안함"
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .conservative: return "명확한 종결어미만 인식"
+        case .aggressive: return "모든 문장에 구두점 추가"
+        case .none: return "구두점 추가하지 않음"
         }
     }
 }

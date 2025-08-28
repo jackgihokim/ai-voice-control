@@ -342,6 +342,9 @@ class PermissionManager: ObservableObject {
         } else {
             // 권한 요청 후에는 denied로 변경 (사용자가 시스템 설정에서 승인해야 함)
             accessibilityPermissionStatus = .denied
+            
+            // Accessibility 권한 요청 후 더 빠른 체크를 위해 임시로 타이머 주기 변경
+            startAccessibilityPermissionIntensiveMonitoring()
         }
         
         #if DEBUG
@@ -349,6 +352,48 @@ class PermissionManager: ObservableObject {
         #endif
         
         return accessibilityPermissionStatus
+    }
+    
+    private func startAccessibilityPermissionIntensiveMonitoring() {
+        #if DEBUG
+        print("🔐 Starting intensive accessibility monitoring (0.5s intervals)")
+        #endif
+        
+        // 기존 타이머 중지
+        permissionCheckTimer?.invalidate()
+        
+        var checkCount = 0
+        let maxChecks = 20  // 최대 10초 동안 체크 (0.5초 * 20)
+        
+        // 0.5초마다 체크하는 임시 타이머
+        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self else { return }
+                
+                checkCount += 1
+                
+                // Accessibility 권한만 체크
+                let previousStatus = self.accessibilityPermissionStatus
+                self.updateAccessibilityPermissionStatus()
+                
+                #if DEBUG
+                if previousStatus != self.accessibilityPermissionStatus {
+                    print("🔐 Accessibility status changed during intensive monitoring: \(previousStatus) -> \(self.accessibilityPermissionStatus)")
+                }
+                #endif
+                
+                // 권한이 승인되었거나 최대 체크 횟수에 도달하면 일반 모니터링으로 복귀
+                if self.accessibilityPermissionStatus == .authorized || checkCount >= maxChecks {
+                    #if DEBUG
+                    print("🔐 Ending intensive monitoring. Status: \(self.accessibilityPermissionStatus), Checks: \(checkCount)")
+                    #endif
+                    
+                    // 일반 모니터링으로 복귀
+                    self.stopPermissionMonitoring()
+                    self.startPermissionMonitoring()
+                }
+            }
+        }
     }
     
     func requestAutomationPermission() -> PermissionStatus {

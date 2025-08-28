@@ -261,9 +261,22 @@ struct MenuBarView: View {
                     .foregroundColor(timerColor)
                 
                 Spacer()
+                
+                // Refresh button
+                Button(action: {
+                    Task {
+                        await viewModel.refreshListening()
+                    }
+                }) {
+                    Image(systemName: "arrow.clockwise.circle.fill")
+                        .foregroundColor(.primary)
+                        .font(.caption)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(!viewModel.isListening)
             }
             
-            ProgressView(value: Double(viewModel.remainingTime), total: 58)
+            ProgressView(value: Double(viewModel.remainingTime), total: 59)
                 .progressViewStyle(LinearProgressViewStyle())
                 .tint(timerColor)
         }

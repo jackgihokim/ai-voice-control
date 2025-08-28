@@ -31,7 +31,7 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
     
     // Continuous recognition management
     private var restartTimer: Timer?
-    private let maxContinuousTime: TimeInterval = 58.0 // Stay under 60s Apple limit
+    private let maxContinuousTime: TimeInterval = 59.0 // Stay under 60s Apple limit
     private var isRestarting = false
     
     // MARK: - Configuration
@@ -354,7 +354,50 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         }
         
         if let result = result {
-            let transcription = result.bestTranscription.formattedString
+            var transcription = result.bestTranscription.formattedString
+            
+            // Load user settings once
+            let userSettings = UserSettings.load()
+            
+            // 구두점 자동 추가 (사용자 설정에 따라)
+            // 웨이크워드 감지 상태에서는 부분 결과에도 구두점 추가 (실시간 표시용)
+            let shouldAddPunctuation = userSettings.autoAddPunctuation && 
+                (result.isFinal || wakeWordDetector.isWaitingForCommand)
+            
+            if shouldAddPunctuation {
+                let originalText = transcription
+                
+                // 텍스트가 너무 짧으면 구두점 추가하지 않음 (오판 방지)
+                if transcription.count >= 3 || result.isFinal {
+                    transcription = KoreanPunctuationHelper.addPunctuation(
+                        to: transcription,
+                        style: userSettings.punctuationStyle == .none ? .none : 
+                               userSettings.punctuationStyle == .aggressive ? 
+                               KoreanPunctuationHelper.PunctuationStyle.aggressive : 
+                               KoreanPunctuationHelper.PunctuationStyle.conservative
+                    )
+                }
+                
+                #if DEBUG
+                if originalText != transcription {
+                    let endingType = KoreanPunctuationHelper.detectEndingType(originalText)
+                    print("📝 Punctuation processing:")
+                    print("   Original: '\(originalText)'")
+                    print("   Modified: '\(transcription)'")
+                    print("   Type detected: \(endingType)")
+                    print("   Style: \(userSettings.punctuationStyle)")
+                    print("   Is Final: \(result.isFinal)")
+                    print("   Waiting for command: \(wakeWordDetector.isWaitingForCommand)")
+                }
+                #endif
+            } else {
+                #if DEBUG
+                if result.isFinal && !userSettings.autoAddPunctuation {
+                    print("⚠️ Punctuation not added: autoAddPunctuation = \(userSettings.autoAddPunctuation)")
+                }
+                #endif
+            }
+            
             currentTranscription = transcription
             
             #if DEBUG
@@ -363,7 +406,6 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
             #endif
             
             // Process wake words with current app configurations
-            let userSettings = UserSettings.load()
             
             #if DEBUG
             let appNames = userSettings.registeredApps.map { $0.name }.joined(separator: ", ")
@@ -375,35 +417,18 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
             if result.isFinal {
                 recognizedText = transcription
                 
-                // 설정에서 재시작 지연 시간 가져오기
-                let userSettings = UserSettings.load()
-                let restartDelay = userSettings.recognitionRestartDelay
-                
                 #if DEBUG
                 print("📝 Final: \(transcription)")
-                print("🔄 Will restart recognition in \(restartDelay) seconds...")
+                print("💬 Continuing to listen for more speech...")
                 #endif
                 
-                // Clear current transcription to prepare for next
+                // Clear current transcription for UI display
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     self.currentTranscription = ""
                 }
                 
-                // Restart recognition for continuous listening with configurable delay
-                if isListening {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + restartDelay) {
-                        if self.isListening {
-                            #if DEBUG
-                            print("🔄 Restarting recognition now...")
-                            #endif
-                            Task {
-                                self.stopListening()
-                                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1초
-                                try? await self.startListening()
-                            }
-                        }
-                    }
-                }
+                // isFinal 자동 재시작 제거 - 연속 발화 지원을 위해 세션 유지
+                // 59초 타이머가 세션 관리를 담당
             } else {
                 #if DEBUG
                 if !transcription.isEmpty && transcription.count > 2 {

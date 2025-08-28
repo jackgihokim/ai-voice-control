@@ -48,8 +48,6 @@ class TextInputAutomator {
     private var currentAppBundleId: String?
     /// 마지막 입력 시간 (세션 연속성 감지용)
     private var lastInputTime: Date = Date()
-    /// 세션 타임아웃 시간 (초)
-    private let sessionTimeout: TimeInterval = 10.0
     
     // MARK: - Types
     
@@ -153,9 +151,8 @@ class TextInputAutomator {
         let currentBundleId = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         let currentTime = Date()
         
-        // 앱이 변경되었거나 세션 타임아웃이 발생했으면 lastInputText 리셋
-        let isNewSession = currentBundleId != currentAppBundleId || 
-                          currentTime.timeIntervalSince(lastInputTime) > sessionTimeout
+        // 앱이 변경되었으면 lastInputText 리셋
+        let isNewSession = currentBundleId != currentAppBundleId
         
         if isNewSession {
             lastInputText = ""

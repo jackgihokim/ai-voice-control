@@ -27,7 +27,7 @@ struct FloatingTimerView: View {
                 .opacity(isDragging ? 1.0 : 0.6)
             
             // Progress bar
-            ProgressView(value: Double(stateManager.remainingTime), total: 58)
+            ProgressView(value: Double(stateManager.remainingTime), total: 59)
                 .progressViewStyle(LinearProgressViewStyle())
                 .frame(width: 80)
                 .tint(progressColor)
@@ -45,6 +45,15 @@ struct FloatingTimerView: View {
                     .font(.caption)
             }
             .buttonStyle(PlainButtonStyle())
+            
+            // Refresh button
+            Button(action: refreshListening) {
+                Image(systemName: "arrow.clockwise.circle.fill")
+                    .foregroundColor(.primary)
+                    .font(.caption)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .disabled(!stateManager.isListening)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -122,6 +131,12 @@ struct FloatingTimerView: View {
                 print("❌ Failed to toggle listening from floating timer: \(error)")
                 #endif
             }
+        }
+    }
+    
+    private func refreshListening() {
+        Task {
+            await stateManager.refreshListening()
         }
     }
 }
