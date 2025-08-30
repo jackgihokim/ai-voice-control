@@ -57,7 +57,10 @@ class KeyboardEventMonitor {
         #if DEBUG
         // Log all key events to debug
         if event.keyCode == 36 || event.keyCode == 76 {
-            print("⌨️ Enter key detected - keyCode: \(event.keyCode)")
+            let activeApp = NSWorkspace.shared.frontmostApplication
+            let appName = activeApp?.localizedName ?? "Unknown"
+            let bundleId = activeApp?.bundleIdentifier ?? "unknown"
+            print("⌨️ [KEYBOARD-MONITOR] Enter key detected - keyCode: \(event.keyCode) - App: \(appName) (\(bundleId))")
         }
         #endif
         

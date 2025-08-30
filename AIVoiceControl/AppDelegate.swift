@@ -23,7 +23,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if ProcessInfo.processInfo.arguments.contains("-reset-defaults") {
             UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier!)
             UserDefaults.standard.synchronize()
-            print("🗑️ UserDefaults reset for debugging")
         }
         #endif
         
@@ -89,6 +88,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self,
             selector: #selector(applicationWillResignActive),
             name: NSApplication.willResignActiveNotification,
+            object: nil
+        )
+        
+        // Monitor active application changes to maintain voice recognition
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(activeApplicationDidChange),
+            name: NSWorkspace.didActivateApplicationNotification,
             object: nil
         )
         
@@ -214,6 +221,45 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Stop permission monitoring when app goes to background
         PermissionManager.shared.stopPermissionMonitoring()
+    }
+    
+    @MainActor @objc private func activeApplicationDidChange(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let app = userInfo[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else {
+            return
+        }
+        
+        let appName = app.localizedName ?? "Unknown"
+        let bundleId = app.bundleIdentifier ?? "unknown"
+        
+        #if DEBUG
+        print("📱 [APP-SWITCH] Active app changed to: \(appName) (\(bundleId))")
+        #endif
+        
+        // Check if voice recognition should continue running
+        let stateManager = VoiceControlStateManager.shared
+        
+        // If voice recognition was running but got stopped during app switch, restart it
+        if stateManager.autoStartEnabled && !stateManager.isListening && !stateManager.isTransitioning {
+            #if DEBUG
+            print("🔄 [APP-SWITCH] Voice recognition stopped during app switch - restarting...")
+            #endif
+            
+            Task {
+                try? await Task.sleep(nanoseconds: 200_000_000) // Wait 0.2s for app switch to complete
+                
+                do {
+                    try await stateManager.startListening()
+                    #if DEBUG
+                    print("✅ [APP-SWITCH] Voice recognition restarted successfully")
+                    #endif
+                } catch {
+                    #if DEBUG
+                    print("❌ [APP-SWITCH] Failed to restart voice recognition: \(error)")
+                    #endif
+                }
+            }
+        }
     }
     
     #if DEBUG

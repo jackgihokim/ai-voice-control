@@ -1,9 +1,12 @@
 import Foundation
 import Speech
 import AVFoundation
+import AppKit
 
 extension Notification.Name {
     static let voiceIsolationStateChanged = Notification.Name("voiceIsolationStateChanged")
+    static let voiceEngineRestarted = Notification.Name("voiceEngineRestarted")
+    static let timerExpiredReset = Notification.Name("timerExpiredReset")
 }
 
 @MainActor
@@ -94,12 +97,6 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
             speechRecognizer?.supportsOnDeviceRecognition = true
         }
         
-        #if DEBUG
-        print("🎤 Speech recognizer initialized")
-        print("🎤 Locale: \(locale.identifier)")
-        print("🎤 On-device recognition: \(speechRecognizer?.supportsOnDeviceRecognition ?? false)")
-        print("🎤 Available: \(speechRecognizer?.isAvailable ?? false)")
-        #endif
     }
     
     private func setupVoiceIsolationBinding() {
@@ -140,9 +137,15 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
     }
     
     func startListening() async throws {
+        let activeApp = NSWorkspace.shared.frontmostApplication
+        #if DEBUG
+        print("🎙️ [VOICE-ENGINE] startListening called - App: \(activeApp?.localizedName ?? "Unknown") (\(activeApp?.bundleIdentifier ?? "unknown"))")
+        print("    Current state: \(recognitionState)")
+        #endif
+        
         guard recognitionState == .idle else {
             #if DEBUG
-            print("⚠️ Already listening or processing")
+            print("⚠️ [VOICE-ENGINE] Not starting - state is \(recognitionState)")
             #endif
             return
         }
@@ -182,18 +185,31 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
             scheduleAutomaticRestart()
             
             #if DEBUG
-            print("✅ Voice recognition started")
-            print("🔊 Voice Isolation: \(isVoiceIsolationEnabled ? "Enabled" : "Disabled")")
-            print("⏰ Automatic restart scheduled in \(maxContinuousTime) seconds")
+            print("✅ [VOICE-ENGINE] Started successfully - state: \(recognitionState), isListening: \(isListening)")
             #endif
+            
         } catch {
+            #if DEBUG
+            print("❌ [VOICE-ENGINE] Failed to start audio engine: \(error)")
+            #endif
             recognitionState = .idle
             throw VoiceRecognitionError.audioEngineError
         }
     }
     
     func stopListening() {
-        guard recognitionState == .listening else { return }
+        let activeApp = NSWorkspace.shared.frontmostApplication
+        #if DEBUG
+        print("🛑 [VOICE-ENGINE] stopListening called - App: \(activeApp?.localizedName ?? "Unknown") (\(activeApp?.bundleIdentifier ?? "unknown"))")
+        print("    Current state: \(recognitionState), isListening: \(isListening)")
+        #endif
+        
+        guard recognitionState == .listening else { 
+            #if DEBUG
+            print("⚠️ [VOICE-ENGINE] Not stopping - state is \(recognitionState)")
+            #endif
+            return 
+        }
         
         recognitionState = .stopping
         
@@ -219,7 +235,7 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         isRestarting = false
         
         #if DEBUG
-        print("🛑 Voice recognition stopped")
+        print("✅ [VOICE-ENGINE] Stopped successfully - state: \(recognitionState), isListening: \(isListening)")
         #endif
     }
     
@@ -261,9 +277,6 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         // This prevents interference with permission requests
         let microphoneStatus = await PermissionManager.shared.checkMicrophonePermission()
         guard microphoneStatus == .authorized else {
-            #if DEBUG
-            print("🔊 Skipping voice isolation configuration - no microphone permission")
-            #endif
             isVoiceIsolationEnabled = false
             audioQuality = .unknown
             return
@@ -283,9 +296,6 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
                 audioQuality = .good
             }
         } catch {
-            #if DEBUG
-            print("⚠️ Voice isolation configuration failed: \(error)")
-            #endif
             // Continue without voice isolation
             isVoiceIsolationEnabled = false
             audioQuality = .unknown
@@ -301,13 +311,6 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         recognitionRequest.shouldReportPartialResults = true
         recognitionRequest.requiresOnDeviceRecognition = requiresOnDeviceRecognition
         
-        #if DEBUG
-        print("🎙️ Speech recognition request configured:")
-        print("   On-device recognition: \(requiresOnDeviceRecognition)")
-        if let speechRecognizer = speechRecognizer {
-            print("   Supports on-device: \(speechRecognizer.supportsOnDeviceRecognition)")
-        }
-        #endif
         
         let inputNode = audioEngine.inputNode
         let recordingFormat = inputNode.outputFormat(forBus: 0)
@@ -336,9 +339,6 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
     
     private func handleRecognitionResult(result: SFSpeechRecognitionResult?, error: Error?) {
         if let error = error {
-            #if DEBUG
-            print("❌ Recognition error: \(error)")
-            #endif
             self.error = .recognitionFailed(error.localizedDescription)
             
             // Restart if it's a temporary error
@@ -378,49 +378,18 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
                     )
                 }
                 
-                #if DEBUG
-                if originalText != transcription {
-                    let endingType = KoreanPunctuationHelper.detectEndingType(originalText)
-                    print("📝 Punctuation processing:")
-                    print("   Original: '\(originalText)'")
-                    print("   Modified: '\(transcription)'")
-                    print("   Type detected: \(endingType)")
-                    print("   Style: \(userSettings.punctuationStyle)")
-                    print("   Is Final: \(result.isFinal)")
-                    print("   Waiting for command: \(wakeWordDetector.isWaitingForCommand)")
-                }
-                #endif
-            } else {
-                #if DEBUG
-                if result.isFinal && !userSettings.autoAddPunctuation {
-                    print("⚠️ Punctuation not added: autoAddPunctuation = \(userSettings.autoAddPunctuation)")
-                }
-                #endif
             }
             
             currentTranscription = transcription
             
-            #if DEBUG
-            print("🎤 Processing transcription: '\(transcription)' | Final: \(result.isFinal)")
-            print("🔍 Current WakeWordDetector state: \(wakeWordDetector.state)")
-            #endif
             
             // Process wake words with current app configurations
             
-            #if DEBUG
-            let appNames = userSettings.registeredApps.map { $0.name }.joined(separator: ", ")
-            print("📱 Registered apps: [\(appNames)]")
-            #endif
             
             wakeWordDetector.processTranscription(transcription, apps: userSettings.registeredApps)
             
             if result.isFinal {
                 recognizedText = transcription
-                
-                #if DEBUG
-                print("📝 Final: \(transcription)")
-                print("💬 Continuing to listen for more speech...")
-                #endif
                 
                 // Clear current transcription for UI display
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -429,12 +398,6 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
                 
                 // isFinal 자동 재시작 제거 - 연속 발화 지원을 위해 세션 유지
                 // 59초 타이머가 세션 관리를 담당
-            } else {
-                #if DEBUG
-                if !transcription.isEmpty && transcription.count > 2 {
-                    print("📝 Partial: \(transcription)")
-                }
-                #endif
             }
         }
     }
@@ -449,69 +412,48 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
             }
         }
         
+        let activeApp = NSWorkspace.shared.frontmostApplication
         #if DEBUG
-        print("⏰ Scheduled automatic restart in \(maxContinuousTime) seconds")
+        print("⏰ [VOICE-ENGINE] Scheduled automatic restart in \(maxContinuousTime)s - App: \(activeApp?.localizedName ?? "Unknown") (\(activeApp?.bundleIdentifier ?? "unknown"))")
         #endif
     }
     
     private func performScheduledRestart() async {
-        guard isListening && !isRestarting else { return }
+        let activeApp = NSWorkspace.shared.frontmostApplication
+        #if DEBUG
+        print("🔄 [VOICE-ENGINE] performScheduledRestart called - App: \(activeApp?.localizedName ?? "Unknown") (\(activeApp?.bundleIdentifier ?? "unknown"))")
+        print("    isListening: \(isListening), isRestarting: \(isRestarting), state: \(recognitionState)")
+        #endif
+        
+        guard isListening && !isRestarting else { 
+            #if DEBUG
+            print("⚠️ [VOICE-ENGINE] Skipping restart - isListening: \(isListening), isRestarting: \(isRestarting)")
+            #endif
+            return 
+        }
         
         // Use async-compatible synchronization instead of semaphore
         isRestarting = true
         defer { isRestarting = false }
         
         #if DEBUG
-        print("🔄 Performing scheduled recognition restart")
+        print("📡 [VOICE-ENGINE] Delegating 59s timer expiry to StateManager")
         #endif
         
-        // Stop current recognition
-        recognitionState = .stopping
-        cleanupRecognitionTask()
-        
-        // 59초 타이머 만료 시 텍스트 필드도 리셋하도록 알림 전송
-        #if DEBUG
-        print("🔔 Posting voiceRecognitionReset notification with clearTextField: true")
-        #endif
+        // Delegate the complete restart process to StateManager
+        // This ensures proper UI updates and state synchronization
         NotificationCenter.default.post(
-            name: .voiceRecognitionReset,
+            name: .timerExpiredReset,
             object: nil,
-            userInfo: ["reason": "timerExpired", "clearTextField": true]
+            userInfo: [
+                "reason": "timerExpired", 
+                "clearTextField": true,
+                "sourceEngine": "VoiceRecognitionEngine"
+            ]
         )
-        
-        // 텍스트 필드 클리어 작업이 완료될 때까지 대기
-        // (UI 업데이트: 0.1초 + 선택: 0.1초 + Backspace: 0.05초 + 여유: 0.15초 = 총 0.4초)
-        #if DEBUG
-        print("⏳ Waiting 0.4 seconds for text field clear to complete...")
-        #endif
-        try? await Task.sleep(nanoseconds: 400_000_000) // 0.4초
-        
-        // Restart if still supposed to be listening
-        if isListening {
-            do {
-                recognitionState = .starting
-                try await startAudioEngine()
-                recognitionState = .listening
-                scheduleAutomaticRestart() // Schedule next restart
-                
-                #if DEBUG
-                print("✅ Recognition restarted successfully")
-                #endif
-            } catch {
-                #if DEBUG
-                print("❌ Failed to restart recognition: \(error)")
-                #endif
-                recognitionState = .idle
-                isListening = false
-                self.error = .audioEngineError
-            }
-        }
     }
     
     private func cleanupRecognitionTask() {
-        #if DEBUG
-        print("🧹 Cleaning up recognition task")
-        #endif
         
         // 1. Cancel existing task first
         recognitionTask?.cancel()
@@ -559,9 +501,6 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
 // MARK: - SFSpeechRecognizerDelegate
 extension VoiceRecognitionEngine: @preconcurrency SFSpeechRecognizerDelegate {
     nonisolated func speechRecognizer(_ speechRecognizer: SFSpeechRecognizer, availabilityDidChange available: Bool) {
-        #if DEBUG
-        print("🎤 Speech recognizer availability changed: \(available)")
-        #endif
         
         if !available {
             Task { @MainActor in

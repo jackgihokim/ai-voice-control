@@ -37,25 +37,15 @@ class WakeWordDetector: ObservableObject {
             object: nil
         )
 
-        #if DEBUG
-        print("🔔 WakeWordDetector: Notification observers setup")
-        #endif
     }
 
     @objc private func handleVoiceRecognitionReset(_ notification: Notification) {
         let reason = notification.userInfo?["reason"] as? String ?? "unknown"
 
-        #if DEBUG
-        print("🔄 WakeWordDetector: Received reset notification (reason: \(reason))")
-        print("   Current state: \(state)")
-        #endif
 
         // Don't reset if we're in the middle of processing a command
         switch state {
         case .wakeWordDetected, .waitingForCommand:
-            #if DEBUG
-            print("⚠️ Ignoring reset - currently processing wake word command")
-            #endif
             return
         default:
             resetState()
@@ -65,18 +55,10 @@ class WakeWordDetector: ObservableObject {
     func processTranscription(_ text: String, apps: [AppConfiguration]) {
         let lowercasedText = text.lowercased()
 
-        #if DEBUG
-        if !text.isEmpty {
-            print("🔍 WakeWordDetector processing: '\(text)' | State: \(state)")
-        }
-        #endif
 
         switch state {
         case .idle:
             if let app = detectWakeWord(in: lowercasedText, apps: apps) {
-                #if DEBUG
-                print("🎯 Wake word detected in IDLE state: \(app.name)")
-                #endif
                 handleWakeWordDetection(app: app)
             }
 
@@ -86,9 +68,6 @@ class WakeWordDetector: ObservableObject {
 
             // 새로운 웨이크 워드가 감지되면 이전 상태를 리셋하고 새로 시작
             if let newApp = detectWakeWord(in: lowercasedText, apps: apps), newApp.id != app.id {
-                #if DEBUG
-                print("🔄 New wake word detected while waiting for command - switching to: \(newApp.name)")
-                #endif
                 handleWakeWordDetection(app: newApp)
                 return
             }
@@ -107,13 +86,6 @@ class WakeWordDetector: ObservableObject {
                 if isLengthBasedNewSession && !lastSessionText.isEmpty {
                     let previousAccumulated = accumulatedText
                     accumulatedText += lastSessionText + " "
-                    #if DEBUG
-                    print("📚 New session detected and text accumulated:")
-                    print("   Length-based: \(isLengthBasedNewSession) (current: \(text.count), last: \(lastSessionText.count))")
-                    print("   Previous accumulated: '\(previousAccumulated)'")
-                    print("   Last session: '\(lastSessionText)'")
-                    print("   New accumulated: '\(accumulatedText)'")
-                    #endif
                 }
 
                 lastTextUpdateTime = currentTime
@@ -128,17 +100,6 @@ class WakeWordDetector: ObservableObject {
 
             // 음성 입력 추적 (타이머 없이)
 
-            #if DEBUG
-            if !text.isEmpty {
-                print("📝 Command buffer updated for \(app.name):")
-                print("   Current text: '\(text)' (length: \(text.count))")
-                print("   Last session: '\(lastSessionText)' (length: \(lastSessionText.count))")
-                print("   Accumulated: '\(accumulatedText)' (length: \(accumulatedText.count))")
-                print("   Combined: '\(combinedText)' (length: \(combinedText.count))")
-                print("   Continuous mode: \(userSettings.continuousInputMode)")
-                print("   Is accumulating: \(isAccumulatingText)")
-            }
-            #endif
 
             // 실시간 텍스트 스트리밍을 위한 알림 전송
             NotificationCenter.default.post(
@@ -156,9 +117,6 @@ class WakeWordDetector: ObservableObject {
             // 새로운 웨이크 워드가 감지되면 이전 상태를 리셋하고 새로 시작
             if let newApp = detectWakeWord(in: lowercasedText, apps: apps) {
                 if let currentApp = detectedApp, newApp.id != currentApp.id {
-                    #if DEBUG
-                    print("🔄 New wake word detected while waiting for command - switching to: \(newApp.name)")
-                    #endif
                     handleWakeWordDetection(app: newApp)
                     return
                 }
@@ -176,9 +134,6 @@ class WakeWordDetector: ObservableObject {
         case .commandReceived:
             // 명령어 처리 완료 후에도 새로운 웨이크 워드를 감지할 수 있게 함
             if let app = detectWakeWord(in: lowercasedText, apps: apps) {
-                #if DEBUG
-                print("🔄 New wake word detected after command completion - starting: \(app.name)")
-                #endif
                 handleWakeWordDetection(app: app)
             } else {
                 // 새로운 웨이크 워드가 없으면 idle 상태로 돌아감
@@ -190,19 +145,10 @@ class WakeWordDetector: ObservableObject {
     private func detectWakeWord(in text: String, apps: [AppConfiguration]) -> AppConfiguration? {
         let cleanText = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
 
-        #if DEBUG
-        let availableWakeWords = apps.flatMap { app in
-            app.wakeWords.map { "\(app.name): '\($0)'" }
-        }
-        print("🔎 [IMPROVED] Checking text: '\(text)' against wake words: [\(availableWakeWords.joined(separator: ", "))]")
-        #endif
 
         // 웨이크 워드 전용 길이 필터링: 2-10자로 최적화 (성능 향상)
         guard cleanText.count >= FuzzyMatching.minWakeWordLength &&
               cleanText.count <= FuzzyMatching.maxWakeWordLength else {
-            #if DEBUG
-            print("⚠️ Wake word length out of optimized range: \(cleanText.count) chars (expected: \(FuzzyMatching.minWakeWordLength)-\(FuzzyMatching.maxWakeWordLength))")
-            #endif
             return nil
         }
 
@@ -223,16 +169,9 @@ class WakeWordDetector: ObservableObject {
                         let matchType = result.similarity >= 1.0 ? "exact" : "fuzzy(\(String(format: "%.2f", result.similarity)))"
                         bestMatch = (app, result.similarity, matchType)
 
-                        #if DEBUG
-                        print("🎯 Better match found: '\(wakeWord)' for app: \(app.name)")
-                        print("   Match type: \(matchType) | Similarity: \(String(format: "%.3f", result.similarity))")
-                        #endif
 
                         // 완벽한 매칭이면 즉시 반환 (최적화)
                         if result.similarity >= 1.0 {
-                            #if DEBUG
-                            print("✅ Perfect match found - returning immediately")
-                            #endif
                             return app
                         }
                     }
@@ -242,17 +181,9 @@ class WakeWordDetector: ObservableObject {
 
         // 최고 점수 매칭 결과 반환
         if let match = bestMatch {
-            #if DEBUG
-            print("✅ Wake word FOUND (\(match.matchType)): '\(match.app.name)'")
-            print("   Final similarity: \(String(format: "%.3f", match.similarity))")
-            print("   In text: '\(text)'")
-            #endif
             return match.app
         }
 
-        #if DEBUG
-        print("❌ No wake word found in: '\(text)' (no matches above threshold \(FuzzyMatching.defaultSimilarityThreshold))")
-        #endif
         return nil
     }
 
@@ -269,10 +200,6 @@ class WakeWordDetector: ObservableObject {
         isAccumulatingText = true
         lastTextUpdateTime = Date()
 
-        #if DEBUG
-        print("🎯 Wake word detected for \(app.name) - ready for real-time text input")
-        print("   Text accumulation started for continuous mode")
-        #endif
 
         // 웨이크 워드 감지 알림 전송
         NotificationCenter.default.post(
@@ -282,9 +209,6 @@ class WakeWordDetector: ObservableObject {
         )
 
         // MenuBarViewModel에서 리셋을 처리하므로 여기서는 하지 않음
-        #if DEBUG
-        print("📤 Wake word notification sent for \(app.name)")
-        #endif
     }
 
     private func handleCommand(app: AppConfiguration) {
@@ -292,10 +216,6 @@ class WakeWordDetector: ObservableObject {
 
         let command = extractCommand(from: commandBuffer, app: app)
 
-        #if DEBUG
-        print("📋 Command extracted: '\(command)'")
-        print("   Original buffer: '\(commandBuffer)'")
-        #endif
 
         NotificationCenter.default.post(
             name: .commandReady,
@@ -324,12 +244,6 @@ class WakeWordDetector: ObservableObject {
     }
 
     func resetState() {
-        #if DEBUG
-        print("🔄 WakeWordDetector: Resetting state to IDLE")
-        print("   Previous state: \(state)")
-        print("   Was waiting for command: \(isWaitingForCommand)")
-        print("   Accumulated text: '\(accumulatedText)'")
-        #endif
 
         state = .idle
         isWaitingForCommand = false
@@ -342,9 +256,6 @@ class WakeWordDetector: ObservableObject {
         isAccumulatingText = false
         lastTextUpdateTime = Date()
         
-        #if DEBUG
-        print("✅ WakeWordDetector: State reset complete - ready for wake words")
-        #endif
     }
 }
 

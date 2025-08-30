@@ -25,18 +25,12 @@ class TextInputAutomator {
             object: nil
         )
         
-        #if DEBUG
-        print("🔔 TextInputAutomator: Notification observers setup")
-        #endif
     }
     
     @objc private func handleVoiceRecognitionReset(_ notification: Notification) {
         let reason = notification.userInfo?["reason"] as? String ?? "unknown"
         let clearTextField = notification.userInfo?["clearTextField"] as? Bool ?? false
         
-        #if DEBUG
-        print("🔄 TextInputAutomator: Received reset notification (reason: \(reason), clearTextField: \(clearTextField))")
-        #endif
         
         resetIncrementalText()
         
@@ -50,14 +44,8 @@ class TextInputAutomator {
     
     /// 활성 앱의 텍스트 필드를 클리어
     private func clearActiveAppTextField() async {
-        #if DEBUG
-        print("🧹 Clearing active app's text field")
-        #endif
         
         guard let activeApp = NSWorkspace.shared.frontmostApplication else {
-            #if DEBUG
-            print("⚠️ No active app found")
-            #endif
             return
         }
         
@@ -68,17 +56,11 @@ class TextInputAutomator {
         await VoiceControlStateManager.shared.stopCountdownTimer()
         
         // UI 업데이트가 완료되도록 잠시 대기
-        #if DEBUG
-        print("⏳ Waiting for UI updates to complete...")
-        #endif
         try? await Task.sleep(nanoseconds: 100_000_000) // 0.1초 대기
         
         do {
             // 포커스된 텍스트 필드를 찾아서 직접 빈 텍스트로 설정
             if let focusedElement = getFocusedTextElement() {
-                #if DEBUG
-                print("🔍 Found focused text element - attempting direct clear")
-                #endif
                 
                 // 빈 텍스트로 직접 설정
                 let clearResult = AXUIElementSetAttributeValue(
@@ -88,46 +70,24 @@ class TextInputAutomator {
                 )
                 
                 if clearResult == .success {
-                    #if DEBUG
-                    print("✅ Text field cleared directly: \(activeApp.localizedName ?? "Unknown")")
-                    #endif
                     return
-                } else {
-                    #if DEBUG
-                    print("⚠️ Direct clear failed, trying keyboard method")
-                    #endif
                 }
             }
             
             // 직접 설정이 실패하면 키보드 방식으로 시도
-            #if DEBUG
-            print("⌨️ Trying keyboard method to clear text field")
-            #endif
             
             // Select all text (Command+A)
             try KeyboardSimulator.shared.selectAll()
             
-            #if DEBUG
-            print("🔍 Text should be highlighted now - waiting 0.1 seconds...")
-            #endif
             
             // 텍스트 선택 완료 대기
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1초 대기
             
-            #if DEBUG
-            print("⌨️ Now attempting to delete selected text...")
-            #endif
             
             // 백스페이스 한 번으로 선택된 텍스트 삭제
             try KeyboardSimulator.shared.sendBackspace()
             
-            #if DEBUG
-            print("✅ Text field cleared using space replacement: \(activeApp.localizedName ?? "Unknown")")
-            #endif
         } catch {
-            #if DEBUG
-            print("❌ Failed to clear text field: \(error)")
-            #endif
         }
         
         // UI 업데이트 방지 플래그 해제
@@ -185,15 +145,9 @@ class TextInputAutomator {
         }
         
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            #if DEBUG
-            print("⚠️ Empty text provided for input")
-            #endif
             return
         }
         
-        #if DEBUG
-        print("🎯 Attempting to input text: '\(text)'")
-        #endif
         
         // 방법 1: 포커스된 텍스트 필드에 직접 입력 시도
         if let focusedElement = getFocusedTextElement() {
@@ -230,11 +184,6 @@ class TextInputAutomator {
             try await Task.sleep(nanoseconds: 200_000_000) // 0.2초
         }
         
-        #if DEBUG
-        print("🎯 Inputting text to app: \(app.name)")
-        print("   Bundle ID: \(app.bundleIdentifier)")
-        print("   Text: '\(text)'")
-        #endif
         
         try inputTextToFocusedApp(text)
     }
@@ -258,34 +207,17 @@ class TextInputAutomator {
             lastInputText = ""
             currentAppBundleId = currentBundleId
             
-            #if DEBUG
-            if currentBundleId != currentAppBundleId {
-                print("🔄 New app detected - resetting text tracking")
-            } else {
-                print("⏰ Session timeout - resetting text tracking")
-            }
-            #endif
         }
         
         // 마지막 입력 시간 업데이트
         lastInputTime = currentTime
         
-        #if DEBUG
-        print("🔄 Incremental text input")
-        print("   Previous: '\(lastInputText)'")
-        print("   New: '\(newText)'")
-        #endif
         
         // 텍스트 차이 계산
         let commonPrefixLength = findCommonPrefixLength(lastInputText, newText)
         let deleteCount = lastInputText.count - commonPrefixLength
         let addText = String(newText.dropFirst(commonPrefixLength))
         
-        #if DEBUG
-        print("   Common prefix length: \(commonPrefixLength)")
-        print("   Delete count: \(deleteCount)")
-        print("   Text to add: '\(addText)'")
-        #endif
         
         // 삭제가 필요한 경우 백스페이스 전송
         if deleteCount > 0 {
@@ -304,9 +236,6 @@ class TextInputAutomator {
         // 마지막 입력 텍스트 업데이트
         lastInputText = newText
         
-        #if DEBUG
-        print("✅ Incremental input completed")
-        #endif
     }
     
     /// 두 문자열의 공통 접두사 길이를 찾습니다
@@ -334,9 +263,6 @@ class TextInputAutomator {
         currentAppBundleId = nil
         lastInputTime = Date()
         
-        #if DEBUG
-        print("🔄 Incremental text tracking reset")
-        #endif
     }
     
     /// Enter 키를 시뮬레이션합니다
@@ -346,15 +272,9 @@ class TextInputAutomator {
             throw TextInputError.accessibilityNotAuthorized
         }
         
-        #if DEBUG
-        print("⏎ Sending Enter key")
-        #endif
         
         try KeyboardSimulator.shared.sendEnter()
         
-        #if DEBUG
-        print("✅ Enter key sent")
-        #endif
     }
     
     /// 텍스트를 입력하고 Enter 키를 전송합니다
@@ -380,24 +300,11 @@ class TextInputAutomator {
     /// - Parameter text: 새로운 텍스트
     /// - Throws: TextInputError
     func replaceCurrentText(_ text: String) throws {
-        #if DEBUG
-        let isEnabled = isAccessibilityEnabled()
-        print("🔍 TextInputAutomator - Accessibility check: \(isEnabled)")
-        print("   AXIsProcessTrusted: \(AXIsProcessTrusted())")
-        #endif
         
         guard isAccessibilityEnabled() else {
-            #if DEBUG
-            print("❌ Accessibility not authorized in TextInputAutomator")
-            print("   Bundle ID: \(Bundle.main.bundleIdentifier ?? "Unknown")")
-            print("   Process name: \(ProcessInfo.processInfo.processName)")
-            #endif
             throw TextInputError.accessibilityNotAuthorized
         }
         
-        #if DEBUG
-        print("🔄 Replacing current text with: '\(text)'")
-        #endif
         
         // 방법 1: 포커스된 텍스트 필드에 직접 교체
         if let focusedElement = getFocusedTextElement() {
@@ -411,9 +318,6 @@ class TextInputAutomator {
     
     /// UI 요소에 직접 텍스트를 교체
     private func replaceTextDirectly(to element: AXUIElement, text: String) throws {
-        #if DEBUG
-        print("🔤 Attempting direct text replacement")
-        #endif
         
         // 새 텍스트로 바로 설정 (기존 텍스트 덮어쓰기)
         let setValueResult = AXUIElementSetAttributeValue(
@@ -423,15 +327,8 @@ class TextInputAutomator {
         )
         
         if setValueResult == .success {
-            #if DEBUG
-            print("✅ Direct text replacement successful")
-            #endif
             return
         }
-        
-        #if DEBUG
-        print("⚠️ Direct text replacement failed, using keyboard simulation")
-        #endif
         
         // 직접 교체 실패시 키보드 시뮬레이션으로 대체
         try replaceTextViaKeyboard(text)
@@ -439,9 +336,6 @@ class TextInputAutomator {
     
     /// 키보드 시뮬레이션으로 텍스트를 교체
     private func replaceTextViaKeyboard(_ text: String) throws {
-        #if DEBUG
-        print("📋 Using clipboard replacement method to avoid IME conflicts: '\(text)'")
-        #endif
         
         // 전체 선택 (Command+A)
         try KeyboardSimulator.shared.selectAll()
@@ -450,9 +344,6 @@ class TextInputAutomator {
         // 모든 텍스트를 클립보드 방식으로 입력하여 IME 충돌 방지
         try inputTextViaClipboard(text)
         
-        #if DEBUG
-        print("✅ Clipboard text replacement completed")
-        #endif
     }
     
     // MARK: - Private Methods
@@ -478,9 +369,6 @@ class TextInputAutomator {
         )
         
         guard appResult == .success, let focusedAppElement = focusedApp else {
-            #if DEBUG
-            print("⚠️ Could not get focused application")
-            #endif
             return nil
         }
         
@@ -493,9 +381,6 @@ class TextInputAutomator {
         )
         
         guard elementResult == .success, let element = focusedElement else {
-            #if DEBUG
-            print("⚠️ Could not get focused UI element")
-            #endif
             return nil
         }
         
@@ -503,15 +388,9 @@ class TextInputAutomator {
         
         // 텍스트 입력이 가능한 요소인지 확인
         if isTextInputElement(axElement) {
-            #if DEBUG
-            print("✅ Found focused text input element")
-            #endif
             return axElement
         }
         
-        #if DEBUG
-        print("⚠️ Focused element is not a text input")
-        #endif
         return nil
     }
     
@@ -552,9 +431,6 @@ class TextInputAutomator {
     
     /// UI 요소에 직접 텍스트를 입력
     private func inputTextDirectly(to element: AXUIElement, text: String) throws {
-        #if DEBUG
-        print("🔤 Attempting direct text input")
-        #endif
         
         // 현재 텍스트 값 가져오기
         var currentValue: CFTypeRef?
@@ -563,10 +439,6 @@ class TextInputAutomator {
         let existingText = (currentValue as? String) ?? ""
         let newText = existingText + text
         
-        #if DEBUG
-        print("   Current text: '\(existingText)'")
-        print("   New text will be: '\(newText)'")
-        #endif
         
         // 새 텍스트 설정
         let setValueResult = AXUIElementSetAttributeValue(
@@ -576,15 +448,8 @@ class TextInputAutomator {
         )
         
         if setValueResult == .success {
-            #if DEBUG
-            print("✅ Direct text input successful")
-            #endif
             return
         }
-        
-        #if DEBUG
-        print("⚠️ Direct text input failed, error: \(setValueResult.rawValue)")
-        #endif
         
         // 직접 입력 실패시 키보드 시뮬레이션으로 대체
         try inputTextViaKeyboard(text)
@@ -592,16 +457,10 @@ class TextInputAutomator {
     
     /// 키보드 시뮬레이션으로 텍스트 입력
     private func inputTextViaKeyboard(_ text: String) throws {
-        #if DEBUG
-        print("📋 Using clipboard method for all text to avoid IME conflicts: '\(text)'")
-        #endif
         
         // 모든 텍스트를 클립보드 방식으로 입력하여 IME 충돌 방지
         try inputTextViaClipboard(text)
         
-        #if DEBUG
-        print("✅ Clipboard text input completed")
-        #endif
     }
     
     
@@ -612,9 +471,6 @@ class TextInputAutomator {
     
     /// 클립보드를 통한 텍스트 입력
     private func inputTextViaClipboard(_ text: String) throws {
-        #if DEBUG
-        print("📋 Using clipboard for text input: '\(text)'")
-        #endif
         
         // 현재 클립보드 내용 백업
         let pasteboard = NSPasteboard.general
@@ -637,9 +493,6 @@ class TextInputAutomator {
             }
         }
         
-        #if DEBUG
-        print("✅ Clipboard text input completed")
-        #endif
     }
     
     

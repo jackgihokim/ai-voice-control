@@ -27,9 +27,6 @@ class FloatingTimerWindow: NSWindow {
         setupWindow()
         setupView()
         
-        #if DEBUG
-        print("🪟 FloatingTimerWindow created at position: \(savedPosition)")
-        #endif
     }
     
     private func setupWindow() {
@@ -53,9 +50,6 @@ class FloatingTimerWindow: NSWindow {
         isRestorable = false
         restorationClass = nil
         
-        #if DEBUG
-        print("🪟 Floating window configured")
-        #endif
     }
     
     private func setupView() {
@@ -70,9 +64,6 @@ class FloatingTimerWindow: NSWindow {
         let settings = UserSettings.load()
         alphaValue = settings.floatingTimerOpacity ?? 1.0
         
-        #if DEBUG
-        print("🎨 Floating timer view setup complete")
-        #endif
     }
     
     private func savePosition(_ position: CGPoint) {
@@ -80,9 +71,6 @@ class FloatingTimerWindow: NSWindow {
         settings.floatingTimerPosition = position
         settings.save()
         
-        #if DEBUG
-        print("💾 Saved floating timer position: \(position)")
-        #endif
     }
     
     override func mouseDown(with event: NSEvent) {
@@ -98,18 +86,12 @@ class FloatingTimerWindow: NSWindow {
         let settings = UserSettings.load()
         if settings.showFloatingTimer == true && stateManager.isListening {
             orderFront(nil)
-            #if DEBUG
-            print("👁️ Floating timer shown")
-            #endif
         }
     }
     
     func hideIfNeeded() {
         if !stateManager.isListening {
             orderOut(nil)
-            #if DEBUG
-            print("🙈 Floating timer hidden")
-            #endif
         }
     }
     
