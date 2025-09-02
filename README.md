@@ -1,3 +1,11 @@
+## !!! 프로젝트 중단 !!!
+### 중단이유
+1. Apple Speech Framework의 Customization 한계
+2. 각 앱 별 상이한 사용성에 대한 비효율적 기능
+### 차후계획
+1. 10월 macOS 26 릴리즈시 새로운 음성인식 모델을 사용하는 버전 26용 개발 가능
+2. 입력은 단순 macOS 받아쓰기 사용, 해당 앱에 Context를 저장하는 MCP 따로 개발 후 Context 통합, API 사용한 AI 웹앱 개발하여 소통
+
 # AI Voice Control
 
 음성 명령으로 AI 데스크톱 앱과 터미널 도구를 제어하는 macOS 네이티브 애플리케이션

@@ -31,6 +31,24 @@ class TextInputAutomator {
         let reason = notification.userInfo?["reason"] as? String ?? "unknown"
         let clearTextField = notification.userInfo?["clearTextField"] as? Bool ?? false
         
+        // 중복 처리 방지
+        guard !isResetting else {
+            #if DEBUG
+            print("⚠️ [TEXT-AUTO] Already resetting, skipping duplicate notification (reason: \(reason))")
+            #endif
+            return
+        }
+        
+        // completeReset에서 오는 경우는 이미 처리되므로 무시
+        if reason == "completeReset" {
+            #if DEBUG
+            print("ℹ️ [TEXT-AUTO] Ignoring completeReset notification (already handled)")
+            #endif
+            return
+        }
+        
+        isResetting = true
+        defer { isResetting = false }
         
         resetIncrementalText()
         
@@ -48,6 +66,12 @@ class TextInputAutomator {
         guard let activeApp = NSWorkspace.shared.frontmostApplication else {
             return
         }
+        
+        #if DEBUG
+        print("🧹 [TEXT-AUTO-CLEAR] Starting to clear text field - App: \(activeApp.localizedName ?? "Unknown")")
+        print("    Before clear - lastInputText: \"\(lastInputText)\"")
+        print("    Before clear - clipboard: \"\(NSPasteboard.general.string(forType: .string) ?? "(empty)")\"")
+        #endif
         
         // UI 업데이트 방지 플래그 설정
         VoiceControlStateManager.shared.isPerformingTextFieldOperation = true
@@ -70,25 +94,61 @@ class TextInputAutomator {
                 )
                 
                 if clearResult == .success {
-                    return
+                    #if DEBUG
+                    print("✅ [TEXT-AUTO-CLEAR] Successfully cleared via Accessibility API")
+                    #endif
+                    // 텍스트 필드가 클리어되었으므로 버퍼도 리셋
+                    lastInputText = ""
+                    currentAppBundleId = nil
+                } else {
+                    // 직접 설정이 실패하면 키보드 방식으로 시도
+                    #if DEBUG
+                    print("⚠️ [TEXT-AUTO-CLEAR] Accessibility API failed, using keyboard method")
+                    #endif
+                    
+                    // Select all text (Command+A)
+                    try KeyboardSimulator.shared.selectAll()
+                    
+                    // 텍스트 선택 완료 대기
+                    try await Task.sleep(nanoseconds: 100_000_000) // 0.1초 대기
+                    
+                    // 백스페이스로 선택된 텍스트 삭제
+                    try KeyboardSimulator.shared.sendBackspace()
+                    
+                    // 키보드 방식으로 클리어했으므로 버퍼 리셋
+                    lastInputText = ""
+                    currentAppBundleId = nil
                 }
+            } else {
+                // 포커스된 요소가 없는 경우에도 키보드 방식 시도
+                #if DEBUG
+                print("⚠️ [TEXT-AUTO-CLEAR] No focused element, using keyboard method")
+                #endif
+                
+                // Select all text (Command+A)
+                try KeyboardSimulator.shared.selectAll()
+                
+                // 텍스트 선택 완료 대기
+                try await Task.sleep(nanoseconds: 100_000_000) // 0.1초 대기
+                
+                // 백스페이스로 선택된 텍스트 삭제
+                try KeyboardSimulator.shared.sendBackspace()
+                
+                // 버퍼 리셋
+                lastInputText = ""
+                currentAppBundleId = nil
             }
             
-            // 직접 설정이 실패하면 키보드 방식으로 시도
-            
-            // Select all text (Command+A)
-            try KeyboardSimulator.shared.selectAll()
-            
-            
-            // 텍스트 선택 완료 대기
-            try await Task.sleep(nanoseconds: 100_000_000) // 0.1초 대기
-            
-            
-            // 백스페이스 한 번으로 선택된 텍스트 삭제
-            try KeyboardSimulator.shared.sendBackspace()
-            
         } catch {
+            #if DEBUG
+            print("❌ [TEXT-AUTO-CLEAR] Failed to clear text field: \(error)")
+            #endif
         }
+        
+        #if DEBUG
+        print("    After clear - lastInputText: \"\(lastInputText)\"")
+        print("    After clear - clipboard: \"\(NSPasteboard.general.string(forType: .string) ?? "(empty)")\"")
+        #endif
         
         // UI 업데이트 방지 플래그 해제
         VoiceControlStateManager.shared.isPerformingTextFieldOperation = false
@@ -108,6 +168,8 @@ class TextInputAutomator {
     private var currentAppBundleId: String?
     /// 마지막 입력 시간 (세션 연속성 감지용)
     private var lastInputTime: Date = Date()
+    /// 리셋 처리 중인지 여부 (중복 처리 방지)
+    private var isResetting: Bool = false
     
     // MARK: - Types
     
@@ -259,10 +321,22 @@ class TextInputAutomator {
     
     /// 추적 중인 텍스트를 리셋합니다
     func resetIncrementalText() {
+        #if DEBUG
+        print("📝 [BUFFER-DEBUG] Resetting incremental text")
+        print("    Before reset:")
+        print("    - lastInputText: \"\(lastInputText)\"")
+        print("    - currentAppBundleId: \(currentAppBundleId ?? "nil")")
+        #endif
+        
         lastInputText = ""
         currentAppBundleId = nil
         lastInputTime = Date()
         
+        #if DEBUG
+        print("    After reset:")
+        print("    - lastInputText: \"\(lastInputText)\"")
+        print("    - currentAppBundleId: \(currentAppBundleId ?? "nil")")
+        #endif
     }
     
     /// Enter 키를 시뮬레이션합니다
@@ -275,6 +349,18 @@ class TextInputAutomator {
         
         try KeyboardSimulator.shared.sendEnter()
         
+    }
+    
+    // MARK: - Debug Getters
+    
+    /// 디버그용: 현재 lastInputText 반환
+    var debugLastInputText: String {
+        return lastInputText
+    }
+    
+    /// 디버그용: 현재 currentAppBundleId 반환
+    var debugCurrentAppBundleId: String? {
+        return currentAppBundleId
     }
     
     /// 텍스트를 입력하고 Enter 키를 전송합니다

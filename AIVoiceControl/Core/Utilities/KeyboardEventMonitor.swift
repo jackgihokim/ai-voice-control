@@ -83,22 +83,30 @@ class KeyboardEventMonitor {
             return 
         }
         
-        // Check if the active app is one of our target apps
-        let isTarget = isTargetAppActive()
-        #if DEBUG
-        print("⌨️ Is target app active: \(isTarget)")
-        #endif
-        guard isTarget else { return }
+        // Remove target app restriction - Enter key reset should work from any app
+        // let isTarget = isTargetAppActive()
+        // #if DEBUG
+        // print("⌨️ Is target app active: \(isTarget)")
+        // #endif
+        // guard isTarget else { return }
         
         #if DEBUG
-        print("⏎ Enter key detected in target app - posting timer reset notification")
+        let activeApp = NSWorkspace.shared.frontmostApplication
+        print("⏎ [KEYBOARD-MONITOR] Enter key detected in target app - delegating to StateManager")
+        print("    App: \(activeApp?.localizedName ?? "Unknown") (\(activeApp?.bundleIdentifier ?? "unknown"))")
         #endif
         
-        // Post notification to reset timer
+        // StateManager에게 완전한 리셋 과정 위임
+        // clearTextField는 false로 설정 (Enter 키 입력 시 텍스트 필드는 자체적으로 처리됨)
         NotificationCenter.default.post(
             name: .enterKeyPressed,
             object: nil,
-            userInfo: ["timestamp": Date()]
+            userInfo: [
+                "reason": "enterKeyPressed",
+                "clearTextField": false,  // Enter 키의 핵심 차이점
+                "sourceComponent": "KeyboardEventMonitor",
+                "timestamp": Date()
+            ]
         )
     }
     

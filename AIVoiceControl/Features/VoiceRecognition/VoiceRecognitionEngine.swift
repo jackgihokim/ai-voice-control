@@ -36,6 +36,8 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
     private var restartTimer: Timer?
     private let maxContinuousTime: TimeInterval = 59.0 // Stay under 60s Apple limit
     private var isRestarting = false
+    private var ignoreInitialText = false
+    private var initialTextIgnoreTimer: Timer?
     
     // MARK: - Configuration
     private let locale: Locale
@@ -181,11 +183,48 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
             isListening = true
             startAudioLevelMonitoring()
             
+            // Set flag to ignore initial text for 500ms
+            ignoreInitialText = true
+            initialTextIgnoreTimer?.invalidate()
+            initialTextIgnoreTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
+                self?.ignoreInitialText = false
+                #if DEBUG
+                print("🔄 [VOICE-ENGINE] Initial text ignore period ended")
+                #endif
+            }
+            
             // Schedule automatic restart for continuous recognition
             scheduleAutomaticRestart()
             
+            // Final buffer check after a short delay
+            Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                #if DEBUG
+                print("🔍 [VOICE-ENGINE] Final buffer check after startListening:")
+                print("    TextInputAutomator lastInputText: '\(TextInputAutomator.shared.debugLastInputText)'")
+                if let clipContent = NSPasteboard.general.string(forType: .string) {
+                    print("    Clipboard content: '\(clipContent)'")
+                }
+                #endif
+                
+                // Force clear if buffers are contaminated
+                if !TextInputAutomator.shared.debugLastInputText.isEmpty {
+                    #if DEBUG
+                    print("⚠️ [VOICE-ENGINE] Buffer still contaminated after start, force clearing")
+                    #endif
+                    TextInputAutomator.shared.resetIncrementalText()
+                }
+                
+                if let clipContent = NSPasteboard.general.string(forType: .string), !clipContent.isEmpty {
+                    #if DEBUG
+                    print("⚠️ [VOICE-ENGINE] Clipboard still contaminated after start, force clearing")
+                    #endif
+                    NSPasteboard.general.clearContents()
+                }
+            }
+            
             #if DEBUG
             print("✅ [VOICE-ENGINE] Started successfully - state: \(recognitionState), isListening: \(isListening)")
+            print("    Initial text ignore enabled for 500ms")
             #endif
             
         } catch {
@@ -234,8 +273,19 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         audioLevel = 0.0
         isRestarting = false
         
+        // Clear text states to prevent carryover
+        recognizedText = ""
+        currentTranscription = ""
+        
+        // Cancel initial text ignore timer if running
+        initialTextIgnoreTimer?.invalidate()
+        initialTextIgnoreTimer = nil
+        ignoreInitialText = false
+        
         #if DEBUG
         print("✅ [VOICE-ENGINE] Stopped successfully - state: \(recognitionState), isListening: \(isListening)")
+        print("    Text states cleared - recognizedText: \"\(recognizedText)\", currentTranscription: \"\(currentTranscription)\"")
+        print("    Initial text ignore flag reset")
         #endif
     }
     
@@ -302,6 +352,17 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         }
     }
     private func startAudioEngine() async throws {
+        // Ensure clean state before creating new request
+        if recognitionRequest != nil || recognitionTask != nil {
+            #if DEBUG
+            print("⚠️ [VOICE-ENGINE] Previous session not fully cleaned, forcing cleanup")
+            #endif
+            cleanupRecognitionTask()
+            // Small delay to ensure cleanup completes
+            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+        }
+        
+        // Create fresh recognition request
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         
         guard let recognitionRequest = recognitionRequest else {
@@ -311,6 +372,9 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         recognitionRequest.shouldReportPartialResults = true
         recognitionRequest.requiresOnDeviceRecognition = requiresOnDeviceRecognition
         
+        #if DEBUG
+        print("🆕 [VOICE-ENGINE] Created new recognition request")
+        #endif
         
         let inputNode = audioEngine.inputNode
         let recordingFormat = inputNode.outputFormat(forBus: 0)
@@ -354,6 +418,14 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
         }
         
         if let result = result {
+            // Ignore initial text if flag is set
+            if ignoreInitialText {
+                #if DEBUG
+                print("🚫 [VOICE-ENGINE] Ignoring initial text: '\(result.bestTranscription.formattedString)'")
+                #endif
+                return
+            }
+            
             var transcription = result.bestTranscription.formattedString
             
             // Load user settings once
@@ -454,11 +526,14 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
     }
     
     private func cleanupRecognitionTask() {
+        #if DEBUG
+        print("🧹 [VOICE-ENGINE] Cleaning up recognition task")
+        #endif
         
         // 1. Cancel existing task first
         recognitionTask?.cancel()
         
-        // 2. End audio request
+        // 2. End audio request explicitly
         recognitionRequest?.endAudio()
         
         // 3. Stop audio engine
@@ -469,9 +544,13 @@ class VoiceRecognitionEngine: NSObject, ObservableObject {
             audioEngine.inputNode.removeTap(onBus: 0)
         }
         
-        // 5. Clear references
+        // 5. Clear references - IMPORTANT: must be nil before creating new ones
         recognitionTask = nil
         recognitionRequest = nil
+        
+        #if DEBUG
+        print("✅ [VOICE-ENGINE] Recognition task cleaned up")
+        #endif
     }
     
     // MARK: - Audio Level Monitoring
